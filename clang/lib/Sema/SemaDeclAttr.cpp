@@ -8226,6 +8226,32 @@ static void handleCFGuardAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
   D->addAttr(::new (S.Context) CFGuardAttr(S.Context, AL, Arg));
 }
 
+static void handleCogtextAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
+   if (!isFunctionOrMethod(D)) {
+      S.Diag(D->getLocation(), diag::warn_attribute_wrong_decl_type)
+         << "'cogtext'" << ExpectedFunctionOrMethod;
+      return;
+   }
+   handleSimpleAttribute<CogtextAttr>(S, D, AL);
+}
+
+static void handleCogmainAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
+   if (!isFunctionOrMethod(D)) {
+      S.Diag(D->getLocation(), diag::warn_attribute_wrong_decl_type)
+         << "'cogmain'" << ExpectedFunctionOrMethod;
+      return;
+   }
+   handleSimpleAttribute<CogmainAttr>(S, D, AL);
+}
+
+static void handleCogcacheAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
+   if (!isFunctionOrMethod(D)) {
+      S.Diag(D->getLocation(), diag::warn_attribute_wrong_decl_type)
+         << "'cogcache'" << ExpectedFunctionOrMethod;
+      return;
+   }
+   handleSimpleAttribute<CogcacheAttr>(S, D, AL);
+}
 
 template <typename AttrTy>
 static const AttrTy *findEnforceTCBAttrByName(Decl *D, StringRef Name) {
@@ -9078,6 +9104,18 @@ ProcessDeclAttribute(Sema &S, Scope *scope, Decl *D, const ParsedAttr &AL,
     handleHandleAttr<UseHandleAttr>(S, D, AL);
     break;
 
+  case ParsedAttr::AT_Cogtext:
+    handleCogtextAttr(S, D, AL);
+    break;
+
+  case ParsedAttr::AT_Cogmain:
+    handleCogmainAttr(S, D, AL);
+    break;
+    
+  case ParsedAttr::AT_Cogcache:
+    handleCogcacheAttr(S, D, AL);
+    break;
+    
   case ParsedAttr::AT_EnforceTCB:
     handleEnforceTCBAttr<EnforceTCBAttr, EnforceTCBLeafAttr>(S, D, AL);
     break;

@@ -389,6 +389,7 @@ def TargetARM : TargetArch<["arm", "thumb", "armeb", "thumbeb"]>;
 def TargetAArch64 : TargetArch<["aarch64"]>;
 def TargetAnyArm : TargetArch<!listconcat(TargetARM.Arches, TargetAArch64.Arches)>;
 def TargetAVR : TargetArch<["avr"]>;
+def TargetP2 : TargetArch<["p2"]>;
 def TargetBPF : TargetArch<["bpfel", "bpfeb"]>;
 def TargetMips32 : TargetArch<["mips", "mipsel"]>;
 def TargetAnyMips : TargetArch<["mips", "mipsel", "mips64", "mips64el"]>;
@@ -3955,6 +3956,28 @@ def DiagnoseAsBuiltin : InheritableAttr {
               VariadicUnsignedArgument<"ArgIndices">];
   let Subjects = SubjectList<[Function]>;
   let Documentation = [DiagnoseAsBuiltinDocs];
+}
+
+// Custom attributes for P2:
+def Cogtext : InheritableAttr, TargetSpecificAttr<TargetP2> {
+  let Spellings = [Clang<"cogtext">];
+  let Subjects = SubjectList<[Function]>;
+  let Documentation = [CogtextDocs];
+  let Args = [];
+}
+
+def Cogmain : InheritableAttr, TargetSpecificAttr<TargetP2> {
+  let Spellings = [Clang<"cogmain">];
+  let Subjects = SubjectList<[Function]>;
+  let Documentation = [CogmainDocs];
+  let Args = [];
+}
+
+def Cogcache : InheritableAttr, TargetSpecificAttr<TargetP2> {
+  let Spellings = [Clang<"cogcache">];
+  let Subjects = SubjectList<[Function]>;
+  let Documentation = [CogcacheDocs];
+  let Args = [];
 }
 
 def Builtin : InheritableAttr {
