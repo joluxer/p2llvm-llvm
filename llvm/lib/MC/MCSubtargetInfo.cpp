@@ -214,6 +214,7 @@ void MCSubtargetInfo::InitMCProcessorInfo(StringRef CPU, StringRef TuneCPU,
     CPUSchedModel = &getSchedModelForCPU(TuneCPU);
   else
     CPUSchedModel = &MCSchedModel::GetDefaultSchedModel();
+
 }
 
 void MCSubtargetInfo::setDefaultFeatures(StringRef CPU, StringRef TuneCPU,

@@ -35,6 +35,8 @@ def P2AsmParserVariant : AsmParserVariant {
 
 class Proc<string Name> : Processor<Name, NoItineraries, []>;
 
+def : Proc<"generic">;
+def : Proc<"p2">;
 def : Proc<"Propeller 2">;
 
 def P2 : Target {
