@@ -878,11 +878,6 @@ enum {
 #include "ELFRelocs/VE.def"
 };
 
-// ELF Relocation types for P2
-enum {
-#include "ELFRelocs/P2.def"
-};
-
 // CSKY Specific e_flags
 enum : unsigned {
   EF_CSKY_801 = 0xa,
@@ -929,6 +924,11 @@ enum : unsigned {
 // ELF Relocation types for LoongArch
 enum {
 #include "ELFRelocs/LoongArch.def"
+};
+
+// ELF Relocation types for P2
+enum {
+#include "ELFRelocs/P2.def"
 };
 
 #undef ELF_RELOC
