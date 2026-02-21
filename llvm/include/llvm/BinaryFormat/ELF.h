@@ -320,6 +320,7 @@ enum {
   EM_VE = 251,            // NEC SX-Aurora VE
   EM_CSKY = 252,          // C-SKY 32-bit processor
   EM_LOONGARCH = 258,     // LoongArch
+  EM_P2 = 300,            // inofficial Parallax Propeller-2
 };
 
 // Object file classes.
@@ -875,6 +876,11 @@ enum {
 // ELF Relocation type for VE.
 enum {
 #include "ELFRelocs/VE.def"
+};
+
+// ELF Relocation types for P2
+enum {
+#include "ELFRelocs/P2.def"
 };
 
 // CSKY Specific e_flags
