@@ -16,6 +16,7 @@
 #include "llvm/MC/MCExpr.h"
 #include "llvm/MC/MCInst.h"
 #include "llvm/MC/MCInstrInfo.h"
+#include "llvm/MC/MCRegisterInfo.h"
 #include "llvm/MC/MCSymbol.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/Debug.h"
@@ -95,6 +96,7 @@ static void printExpr(const MCExpr *Expr, const MCAsmInfo *MAI, raw_ostream &OS)
         const auto *CE = dyn_cast<MCConstantExpr>(BE->getRHS());
         assert(SRE && CE && "Binary expression must be sym+const.");
         //Offset = CE->getValue();
+        (void)CE;
     } else {
         SRE = dyn_cast<MCSymbolRefExpr>(Expr);
         assert(SRE && "Unexpected MCExpr type.");

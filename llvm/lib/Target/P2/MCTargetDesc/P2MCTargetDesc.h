@@ -33,7 +33,7 @@ namespace llvm {
     class raw_ostream;
     class raw_pwrite_stream;
 
-    MCCodeEmitter *createP2MCCodeEmitter(const MCInstrInfo &MCII, const MCRegisterInfo &MRI, MCContext &Ctx);
+    MCCodeEmitter *createP2MCCodeEmitter(const MCInstrInfo &MCII, MCContext &Ctx);
 
     MCAsmBackend *createP2AsmBackend(const Target &T, const MCSubtargetInfo &STI, const MCRegisterInfo &MRI, const llvm::MCTargetOptions &TO);
 

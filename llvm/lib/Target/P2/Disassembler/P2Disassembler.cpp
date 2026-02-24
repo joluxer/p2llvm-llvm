@@ -20,9 +20,10 @@
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCContext.h"
 #include "llvm/MC/MCDisassembler/MCDisassembler.h"
-#include "llvm/MC/MCFixedLenDisassembler.h"
+#include "llvm/MC/MCDecoderOps.h"
 #include "llvm/MC/MCInst.h"
 #include "llvm/MC/TargetRegistry.h"
+#include "llvm/BinaryFormat/ELF.h"
 
 using namespace llvm;
 
@@ -59,7 +60,7 @@ public:
     bool tryAddingSymbolicOperand(MCInst &Inst, raw_ostream &cStream,
                                 int64_t Value, uint64_t Address,
                                 bool IsBranch, uint64_t Offset,
-                                uint64_t InstSize) override;
+                                uint64_t Width, uint64_t InstSize) override;
 
     void tryAddingPcLoadReferenceComment(raw_ostream &cStream,
                                         int64_t Value,
@@ -167,7 +168,7 @@ static DecodeStatus DecodeCallInstruction(MCInst &Inst, unsigned Insn, uint64_t 
         }
 
         auto *Dis = static_cast<const MCDisassembler*>(Decoder);
-        if (!Dis->tryAddingSymbolicOperand(Inst, call_addr, Address, true, 0, 1)) {
+        if (!Dis->tryAddingSymbolicOperand(Inst, call_addr, Address, true, 0, 4, 1)) {
             Inst.addOperand(MCOperand::createImm(a_field));
         }
     } else if (opc == P2::CALL) {
@@ -379,7 +380,7 @@ typedef DecodeStatus (*DecodeFunc)(MCInst &MI, unsigned insn, uint64_t Address, 
 bool P2Symbolizer::tryAddingSymbolicOperand(MCInst &Inst,
                                 raw_ostream &/*cStream*/, int64_t Value,
                                 uint64_t Address, bool IsBranch,
-                                uint64_t /*Offset*/, uint64_t /*InstSize*/) {
+                                uint64_t /*Offset*/, uint64_t /*Width*/, uint64_t /*InstSize*/) {
 
     if (!IsBranch) { // only symbolize branches/calls
         return false;

@@ -121,8 +121,8 @@ namespace llvm {
             return ((flags >> 6) & 1) == 1;
         }
 
-        static inline int getDNum(uint64_t flags) {
-            return (flags >> 11) & 0x7;
+        static inline unsigned getDNum(uint64_t flags) {
+            return unsigned(flags >> 11) & 0x7U;
         }
 
         static inline bool hasSField(uint64_t flags) {
@@ -149,7 +149,7 @@ namespace llvm {
             return hasDField(mi.getDesc().TSFlags);
         }
 
-        static inline int getDNum(const MachineInstr &mi) {
+        static inline unsigned getDNum(const MachineInstr &mi) {
             return getDNum(mi.getDesc().TSFlags);
         }
 

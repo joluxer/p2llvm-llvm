@@ -288,6 +288,8 @@ namespace {
             int n_num = P2::getNNum(MI.getFlags());
 
             LLVM_DEBUG(errs() << "has_d = " << has_d << " has_s = " << has_s << " has_n = " << has_n << " s_num = " << s_num << " d_num = " << d_num << " n_num = " << n_num << "\n");
+            (void)has_n;
+            (void)n_num;
 
             if (has_d && op_num == d_num) {
                 aug_type = 2;
@@ -316,7 +318,7 @@ namespace {
                 type == P2::P2InstRA ||
                 type == P2::P2InstD || 
                 type == P2::P2InstCZ ||
-                type == P2::P2InstCZD | 
+                type == P2::P2InstCZD || 
                 type == 0) return false;
 
             return true;
@@ -329,6 +331,7 @@ void printP2Operands(OperandVector &Operands) {
         P2Operand* op = static_cast<P2Operand*>(&*Operands[i]);
         assert(op != nullptr);
         LLVM_DEBUG(dbgs() << " " << *op);
+        (void)op;
     }
     LLVM_DEBUG(dbgs() << "\n");
 }
@@ -742,11 +745,11 @@ bool P2AsmParser::parseOperand(OperandVector &Operands, StringRef Mnemonic) {
             return true;
         case AsmToken::Dollar:
             Parser.Lex(); // eat the dollar sign
-            [[clang::fallthrough]];
+            [[fallthrough]];
         case AsmToken::Minus:
-            [[clang::fallthrough]];
+            [[fallthrough]];
         case AsmToken::Plus:
-            [[clang::fallthrough]];
+            [[fallthrough]];
         case AsmToken::Identifier: {
             // parse register
             SMLoc S = Parser.getTok().getLoc();

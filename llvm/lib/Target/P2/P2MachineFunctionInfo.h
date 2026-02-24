@@ -64,7 +64,7 @@ public:
         IncomingArgSize(0),
         CalleeSavedFrameSize(0)
         {
-            cogex = MF.getFunction().hasFnAttribute("cogmain") || MF.getFunction().hasFnAttribute(Attribute::Cogtext);
+            cogex = MF.getFunction().hasFnAttribute("cogmain") || MF.getFunction().hasFnAttribute("cogtext");
         }
 
     ~P2FunctionInfo();

@@ -34,7 +34,7 @@
 #include "P2GenInstrInfo.inc"
 #undef GET_INSTRMAP_INFO
 
-MCCodeEmitter *llvm::createP2MCCodeEmitter(const MCInstrInfo &MCII, const MCRegisterInfo &MRI, MCContext &Ctx) {
+MCCodeEmitter *llvm::createP2MCCodeEmitter(const MCInstrInfo &MCII, MCContext &Ctx) {
     return new P2MCCodeEmitter(MCII, Ctx);
 }
 

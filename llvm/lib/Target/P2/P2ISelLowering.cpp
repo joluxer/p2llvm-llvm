@@ -433,6 +433,7 @@ SDValue P2TargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
 
             // save how many bytes of the call will allocated
             // P2FI->setCallArgFrameSize(P2FI->getCallArgFrameSize() + arg_size);
+            (void)P2FI;
 
             if (Flags.isByVal()) {
                 LLVM_DEBUG(errs() << "Argument is byval of size " << Flags.getByValSize() << "\n");

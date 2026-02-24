@@ -103,7 +103,7 @@ namespace {
                 type == P2::P2InstRA ||
                 type == P2::P2InstD || 
                 type == P2::P2InstCZ ||
-                type == P2::P2InstCZD | 
+                type == P2::P2InstCZD || 
                 type == 0) return false;
 
             return true;

@@ -3,6 +3,7 @@
 #include "llvm/BinaryFormat/ELF.h"
 #include "llvm/MC/MCSubtargetInfo.h"
 #include "llvm/MC/SubtargetFeature.h"
+#include "llvm/MC/MCAssembler.h"
 #include "llvm/Support/FormattedStream.h"
 
 #include "P2MCTargetDesc.h"
@@ -12,6 +13,7 @@ namespace llvm {
     P2ELFStreamer::P2ELFStreamer(MCStreamer &S, const MCSubtargetInfo &STI) : P2TargetStreamer(S) {
         MCAssembler &MCA = getStreamer().getAssembler();
         unsigned EFlags = MCA.getELFHeaderEFlags();
+        // TODO: modify future flags
         MCA.setELFHeaderEFlags(EFlags);
     }
 

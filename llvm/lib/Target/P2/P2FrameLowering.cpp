@@ -145,7 +145,7 @@ bool P2FrameLowering::spillCalleeSavedRegisters(MachineBasicBlock &MBB, MachineB
 
     LLVM_DEBUG(errs() << "reg: " << block_first_reg << "\n");
 
-    for (int i = 1; i < CSI.size(); i++) {
+    for (unsigned i = 1; i < CSI.size(); i++) {
 
         unsigned reg = CSI[i].getReg();
         unsigned prev_reg = CSI[i-1].getReg();
