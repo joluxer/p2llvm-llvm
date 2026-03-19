@@ -44,7 +44,7 @@ namespace {
          * Insert an aug with the given parameters before MI
          */
         void createAugInst(MachineInstr &MI, int type, int value, int condition) const {
-            assert (type == 1 || type == 2 && "Unknown aug type");
+            assert (((type == 1) || (type == 2)) && "Unknown aug type");
 
             auto *TII = TM.getInstrInfo();
             unsigned opc;

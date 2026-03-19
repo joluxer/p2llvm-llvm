@@ -481,7 +481,7 @@ SDValue P2TargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
 
     LLVM_DEBUG(errs() << "callee: "; Callee.dump());
 
-    // buit the list of CopyToReg operations.
+    // build the list of CopyToReg operations.
     getOpndList(Ops, RegsToPass, false, GlobalOrExternal, InternalLinkage, CLI, Callee, Chain);
 
     // call the function

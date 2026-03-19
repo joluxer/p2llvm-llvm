@@ -55,8 +55,7 @@ static unsigned adjustFixupValue(const MCFixup &Fixup, uint64_t Value, MCContext
             Value /= 4;
             Value &= 0x1ff;
             break;
-        default:
-            return 0;
+        default: break;
     }
 
     return Value;
@@ -80,9 +79,6 @@ void P2AsmBackend::applyFixup(const MCAssembler &Asm, const MCFixup &Fixup,
     MCFixupKind Kind = Fixup.getKind();
     Value = adjustFixupValue(Fixup, Value);
     uint64_t Mask = ((uint64_t)(-1) >> (64 - getFixupKindInfo(Kind).TargetSize));
-
-    if (!Value)
-        return; // Doesn't change encoding.
 
     LLVM_DEBUG(errs() << "new value is " << Value << "\n");
 

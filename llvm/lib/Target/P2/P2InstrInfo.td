@@ -263,13 +263,16 @@ let DecoderMethod = "DecodeGetQInstruction" in {
     def GETQY   : P2InstCZD<0b1101011, 0b000011001, (outs P2GPR:$d), (ins P2Implicit:$qy), "getqy $d">;
 }
 
-let DecoderMethod = "DecodeCordicInstruction" in {
+let DecoderMethod = "DecodeCordicInstruction", Defs = [QX, QY] in {
     defm QMUL       : P2InstLIDSm<0b11010000, "qmul">;
     defm QDIV       : P2InstLIDSm<0b11010001, "qdiv">;
     defm QFRAC      : P2InstLIDSm<0b11010010, "qfrac">;
-    defm QSQRT      : P2InstLIDSm<0b11010011, "qsqrt">;
     defm QROTATE    : P2InstLIDSm<0b11010100, "qrotate">;
     defm QVECTOR    : P2InstLIDSm<0b11010101, "qvector">;
+}
+
+let DecoderMethod = "DecodeCordicInstruction", Defs = [QX] in {
+    defm QSQRT      : P2InstLIDSm<0b11010011, "qsqrt">;
 }
 
 defm QLOG       : P2InstLDm<0b1101011, 0b000001110, "qlog">;

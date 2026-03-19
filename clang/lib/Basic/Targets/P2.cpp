@@ -38,6 +38,7 @@ ArrayRef<const char *> P2TargetInfo::getGCCRegNames() const {
 
 void P2TargetInfo::getTargetDefines(const LangOptions &Opts,
                                      MacroBuilder &Builder) const {
+    Builder.defineMacro("__ELF__");
     Builder.defineMacro("__propeller2__");
     Builder.defineMacro("__p2llvm__");
 }

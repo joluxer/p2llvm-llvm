@@ -253,7 +253,7 @@ namespace {
          * flags in MI must be set
          */
         void createAugInst(MCInst &Aug, int type, int value, int condition) const {
-            assert (type == 1 || type == 2 && "Unknown aug type");
+            assert ((type == 1 || type == 2) && "Unknown aug type");
 
             unsigned opc;
 
