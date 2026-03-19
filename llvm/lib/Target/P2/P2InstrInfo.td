@@ -77,8 +77,12 @@ def P2callseq_end : SDNode<"ISD::CALLSEQ_END", SDT_P2CallSeqEnd, [SDNPHasChain, 
 def P2RDLUT  : SDNode<"P2ISD::RDLUT", SDTLoad, [SDNPHasChain, SDNPMayLoad, SDNPMemOperand]>;
 def P2WRLUT  : SDNode<"P2ISD::WRLUT", SDTStore, [SDNPHasChain, SDNPMayStore, SDNPMemOperand]>;
 
-def P2RET   : SDNode<"P2ISD::RET", SDTNone, [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
-def P2CALL  : SDNode<"P2ISD::CALL", SDT_P2Call, [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
+def P2RET      : SDNode<"P2ISD::RET",       SDTNone,    [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
+def P2CALL     : SDNode<"P2ISD::CALL",      SDT_P2Call, [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
+// Tail call: same type profile as CALL but produces no glue — nothing follows
+// the jump. PTRA is not modified; the callee's RETA consumes the caller's
+// return address directly.
+def P2TAILCALL : SDNode<"P2ISD::TAIL_CALL", SDT_P2Call, [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
 
 def rdlut : PatFrag<(ops node:$ptr), (P2RDLUT node:$ptr)> {
     let IsNonExtLoad = 1;
@@ -568,6 +572,27 @@ let isCall = 1, Uses = [PTRA], DecoderMethod = "DecodeCallInstruction" in {
     def CALLAr   : P2InstCZD<0b1101011, 0b000101110, (outs), (ins P2GPR:$d), "calla $d">; // mainly use this for function calls with register input
 }
 
+// Tail-call pseudos.  Expanded to JMPa / JMPr by P2ExpandPseudos.
+//
+// isCall      — keeps argument-register kill information visible to the
+//               register allocator so live-in physical registers are not
+//               incorrectly eliminated.
+// isReturn    — signals that control leaves the current function here,
+//               allowing the frame lowering to omit an explicit RETA.
+// isTerminator/isBarrier — prevent the scheduler from placing anything
+//               after the jump and mark the basic block as ending here.
+//
+// PTRA is intentionally absent from Uses/Defs: a tail call reuses the
+// caller's PTRA entry rather than pushing a new one, so the stack pointer
+// is neither read nor written by these pseudos.
+let isCall = 1, isTerminator = 1, isReturn = 1, isBarrier = 1,
+    isCodeGenOnly = 1 in {
+    def TCALL_a : Pseudo<(outs), (ins abscalltarget:$dst),
+                         "# TCALL_a $dst">;
+    def TCALL_r : Pseudo<(outs), (ins P2GPR:$dst),
+                         "# TCALL_r $dst">;
+}
+
 let Defs = [PTRA], Uses = [PTRA] in {
     def ADJCALLSTACKUP      : Pseudo<(outs), (ins i32imm:$amt1, i32imm:$amt2), "ADJCALLSTACKUP">;
     def ADJCALLSTACKDOWN    : Pseudo<(outs), (ins i32imm:$amt, i32imm:$amt2), "ADJCALLSTACKDOWN">;
@@ -583,6 +608,14 @@ def : Pat<(P2GAWrapper tjumptable:$addr), (MOVri tjumptable:$addr, always, noeff
 def : Pat<(P2CALL (i32 tglobaladdr:$dst)), (CALLAa tglobaladdr:$dst, always)>;
 def : Pat<(P2CALL (i32 texternalsym:$dst)), (CALLAa texternalsym:$dst, always)>;
 def : Pat<(P2CALL (i32 P2GPR:$d)), (CALLAr P2GPR:$d, always, noeff)>;
+
+// Tail-call selection: P2ISD::TAIL_CALL → TCALL pseudo.
+// The pattern matches only the callee operand; the variadic register copies,
+// regmask, and optional input glue are transparent to the TableGen matcher.
+// P2ExpandPseudos later replaces TCALL_a/TCALL_r with JMPa/JMPr.
+def : Pat<(P2TAILCALL (i32 tglobaladdr:$dst)),  (TCALL_a tglobaladdr:$dst)>;
+def : Pat<(P2TAILCALL (i32 texternalsym:$dst)), (TCALL_a texternalsym:$dst)>;
+def : Pat<(P2TAILCALL (i32 P2GPR:$d)),          (TCALL_r P2GPR:$d)>;
 
 /*--------------------------------*/
 /* I/O and hardware control       */

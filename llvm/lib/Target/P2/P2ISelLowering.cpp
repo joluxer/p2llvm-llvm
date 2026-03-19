@@ -28,6 +28,7 @@
 #include "llvm/IR/CallingConv.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/GlobalVariable.h"
+#include "llvm/IR/IRBuilder.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
@@ -49,8 +50,9 @@ static unsigned addLiveIn(MachineFunction &MF, unsigned PReg, const TargetRegist
 const char *P2TargetLowering::getTargetNodeName(unsigned Opcode) const {
 
     switch (Opcode) {
-        case P2ISD::RET: return "P2RET";
-        case P2ISD::CALL: return "P2CALL";
+        case P2ISD::RET:       return "P2RET";
+        case P2ISD::CALL:      return "P2CALL";
+        case P2ISD::TAIL_CALL: return "P2TAIL_CALL";
         case P2ISD::GAWRAPPER: return "P2GAWRAPPER";
         default:
             return nullptr;
@@ -59,6 +61,7 @@ const char *P2TargetLowering::getTargetNodeName(unsigned Opcode) const {
 }
 
 P2TargetLowering::P2TargetLowering(const P2TargetMachine &TM) : TargetLowering(TM), target_machine(TM) {
+    
     addRegisterClass(MVT::i32, &P2::P2GPRRegClass);
     addRegisterClass(MVT::i64, &P2::P2GPRPairRegClass);
 
@@ -72,6 +75,9 @@ P2TargetLowering::P2TargetLowering(const P2TargetMachine &TM) : TargetLowering(T
     // See https://llvm.org/doxygen/TargetLowering_8h_source.html#l00192 for the various actions
     setOperationAction(ISD::GlobalAddress, MVT::i32, Custom);
 
+    setOperationAction(ISD::SMUL_LOHI, MVT::i32, Legal);
+    setOperationAction(ISD::UMUL_LOHI, MVT::i32, Legal);
+    
     setOperationAction(ISD::MULHS, MVT::i32, Expand);
     setOperationAction(ISD::MULHU, MVT::i32, Expand);
 
@@ -101,8 +107,8 @@ P2TargetLowering::P2TargetLowering(const P2TargetMachine &TM) : TargetLowering(T
         setOperationAction(ISD::ATOMIC_LOAD_MIN, VT, Expand);
         setOperationAction(ISD::ATOMIC_LOAD_UMAX, VT, Expand);
         setOperationAction(ISD::ATOMIC_LOAD_UMIN, VT, Expand);
-    }
-
+        }
+    
     setOperationAction(ISD::SETCC, MVT::i32, Expand);
     setOperationAction(ISD::BR_JT, MVT::Other, Expand);
     setOperationAction(ISD::JumpTable, MVT::i32, Custom);
@@ -242,6 +248,41 @@ SDValue P2TargetLowering::lowerSHL64(SDValue Op, SelectionDAG &DAG) const {
     return lowerLibcall64(RTLIB::SHL_I64, Op, DAG);
 }
 
+// A call may be lowered to a tail call (JMP instead of CALLA) when all of
+// the following hold:
+//
+//   1. LLVM has identified the call as being in tail position.
+//   2. The callee is not variadic.  Vararg ABIs embed a fixed-argument count
+//      in the stack layout; we cannot reuse the caller's frame for them.
+//   3. Every argument is passed in a register.  A stack argument would require
+//      rewriting memory below the current PTRA, which would alias the caller's
+//      own incoming argument area.
+//   4. No argument is passed byval.  byval implies a stack memcpy.
+//
+// This is intentionally conservative; it does not attempt to reuse the
+// caller's stack slots even when the argument layout would be compatible.
+bool P2TargetLowering::isEligibleForTailCallOptimization(
+        CallLoweringInfo &CLI,
+        CCState &CCInfo,
+        SmallVectorImpl<CCValAssign> &ArgLocs) const {
+
+    // Condition 2: no vararg callee.
+    if (CLI.IsVarArg)
+        return false;
+
+    // Condition 3: all arguments in registers.
+    for (const CCValAssign &VA : ArgLocs)
+        if (!VA.isRegLoc())
+            return false;
+
+    // Condition 4: no byval arguments.
+    for (const ISD::OutputArg &Out : CLI.Outs)
+        if (Out.Flags.isByVal())
+            return false;
+
+    return true;
+}
+
 SDValue P2TargetLowering::lowerSelect64(SDValue Op, SelectionDAG &DAG) const {
     SDNode *node = Op.getNode();
     EVT VT = node->getValueType(0);
@@ -341,10 +382,9 @@ SDValue P2TargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
 
     LLVM_DEBUG(errs() << "=== Lower Call\n");
 
-    // P2 does not yet support tail call optimization.
-    isTailCall = false;
-
     // Analyze operands of the call, assigning locations to each operand.
+    // This must happen before CALLSEQ_START so that the tail-call eligibility
+    // check can inspect ArgLocs before any side-effectful DAG nodes are emitted.
     SmallVector<CCValAssign, 16> ArgLocs;
     CCState CCInfo(CallConv, IsVarArg, DAG.getMachineFunction(), ArgLocs, *DAG.getContext());
     if (IsVarArg) {
@@ -352,6 +392,13 @@ SDValue P2TargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
     } else {
         CCInfo.AnalyzeCallOperands(Outs, CC_P2);
     }
+
+    // Refine the caller's tail-call hint against our eligibility conditions.
+    // isTailCall starts as true only when the LLVM IR already marked the call
+    // site as a musttail or when the optimizer determined tail position.
+    isTailCall = isTailCall && isEligibleForTailCallOptimization(CLI, CCInfo, ArgLocs);
+
+    LLVM_DEBUG(errs() << (isTailCall ? "  -> tail call\n" : "  -> normal call\n"));
 
     // Get a count of how many bytes are to be pushed on the stack.
     unsigned NextStackOffset = CCInfo.getNextStackOffset();
@@ -362,11 +409,13 @@ SDValue P2TargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
     unsigned StackAlignment = TFL->getStackAlignment();
     NextStackOffset = alignTo(NextStackOffset, StackAlignment);
 
-    // start the call sequence.
-    Chain = DAG.getCALLSEQ_START(Chain, NextStackOffset, 0, DL);
-
-    // get the current stack pointer value
-    SDValue StackPtr = DAG.getCopyFromReg(Chain, DL, P2::PTRA, getPointerTy(DAG.getDataLayout()));
+    // For normal calls, open the call sequence and obtain the current stack
+    // pointer.  Tail calls skip this: they reuse the caller's frame directly.
+    SDValue StackPtr;
+    if (!isTailCall) {
+        Chain = DAG.getCALLSEQ_START(Chain, NextStackOffset, 0, DL);
+        StackPtr = DAG.getCopyFromReg(Chain, DL, P2::PTRA, getPointerTy(DAG.getDataLayout()));
+    }
 
     // we have 4 args on registers
     std::deque<std::pair<unsigned, SDValue>> RegsToPass;
@@ -375,8 +424,9 @@ SDValue P2TargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
     CCInfo.rewindByValRegsInfo();
 
     // iterate over the argument locations.
-    // at each location, push a reg/value pair onto RegsToPass, promoting the type if needed.
-    // if the location is a memory location, load it from memory
+    // at each location, push a reg/value pair onto RegsToPass, promoting the
+    // type if needed.  For tail calls this loop will only see register
+    // locations (guaranteed by isEligibleForTailCallOptimization).
     for (unsigned i = 0; i < ArgLocs.size(); i++) {
         SDValue Arg = OutVals[i];
         CCValAssign &VA = ArgLocs[i];
@@ -405,6 +455,7 @@ SDValue P2TargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
         } else {
             // Register can't get to this point...
             assert(VA.isMemLoc());
+            assert(!isTailCall && "tail call with stack argument — should have been rejected by eligibility check");
 
             LLVM_DEBUG(errs() << "Stack argument location offset is " << VA.getLocMemOffset() << "\n");
             LLVM_DEBUG(errs() << "argument: ");
@@ -431,8 +482,6 @@ SDValue P2TargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
                 PtrOff = SDValue(DAG.getMachineNode(P2::ADDri, DL, vt, ops), 0);
             }
 
-            // save how many bytes of the call will allocated
-            // P2FI->setCallArgFrameSize(P2FI->getCallArgFrameSize() + arg_size);
             (void)P2FI;
 
             if (Flags.isByVal()) {
@@ -477,12 +526,23 @@ SDValue P2TargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
     }
 
     SmallVector<SDValue, 8> Ops(1, Chain);
-    SDVTList NodeTys = DAG.getVTList(MVT::Other, MVT::Glue);
 
     LLVM_DEBUG(errs() << "callee: "; Callee.dump());
 
     // build the list of CopyToReg operations.
     getOpndList(Ops, RegsToPass, false, GlobalOrExternal, InternalLinkage, CLI, Callee, Chain);
+
+    if (isTailCall) {
+        // Emit a tail-call node.  This lowers to JMP (not CALLA), so PTRA is
+        // not modified.  The callee's RETA will consume the caller's PTRA entry
+        // directly, returning to the caller's caller.
+        // No CALLSEQ_END is emitted: there is no matching CALLSEQ_START.
+        Chain = DAG.getNode(P2ISD::TAIL_CALL, DL, MVT::Other, Ops);
+        return Chain;
+    }
+
+    // Normal (non-tail) call path.
+    SDVTList NodeTys = DAG.getVTList(MVT::Other, MVT::Glue);
 
     // call the function
     Chain = DAG.getNode(P2ISD::CALL, DL, NodeTys, Ops);

@@ -24,6 +24,10 @@ namespace llvm {
 
     FunctionPass *createP2CollapseSubregCopyPass(P2TargetMachine &tm);
     FunctionPass *createP2ExpandPseudosPass(P2TargetMachine &tm);
+    // Expands TCALL_a/TCALL_r tail-call pseudos to JMPa/JMPr.  Must run after
+    // register allocation so that argument CopyToReg nodes are not eliminated
+    // as dead stores before the RA sees the call's register uses.
+    FunctionPass *createP2ExpandTailCallsPass(P2TargetMachine &tm);
     FunctionPass *createP2DelJmp0Pass(P2TargetMachine &TM);
     FunctionPass *createP2InsertAugPass(P2TargetMachine &TM);
     FunctionPass *createP2FinalizeBranchesPass(P2TargetMachine &TM);

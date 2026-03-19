@@ -24,6 +24,7 @@
 #include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/CodeGen/RegisterScavenging.h"
+#include "llvm/ADT/SmallSet.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/Function.h"
 #include "llvm/Support/CommandLine.h"
@@ -218,25 +219,74 @@ bool P2FrameLowering::restoreCalleeSavedRegisters(MachineBasicBlock &MBB, Machin
     DebugLoc DL = MBB.findDebugLoc(MI);
 
     LLVM_DEBUG(errs() << "=== Function: " << MF.getName() << " ===\n");
-
     LLVM_DEBUG(errs() << "Restore CSRs\n");
+
     if (CSI.empty()) {
         LLVM_DEBUG(errs() << "--- nothing to restore\n");
         return false;
     }
 
-    // see spillCalleeSavedRegisters for explanation, this is just doing the same thin in reverse
+    // Tail-call argument registers must not be restored: they carry the
+    // arguments for the callee and restoring them from the stack would
+    // overwrite the prepared values.
+    //
+    // We derive the set dynamically from the tail-call terminator's operands
+    // rather than from a hardcoded register list, so this is correct regardless
+    // of how many argument registers the active calling convention uses.
+    SmallSet<unsigned, 8> tailCallArgRegs;
+    auto termIt = MBB.getFirstTerminator();
+    if (termIt != MBB.end()) {
+        unsigned opc = termIt->getOpcode();
+        if (opc == P2::TCALL_a || opc == P2::TCALL_r) {
+            LLVM_DEBUG(errs() << "--- tail call block, collecting live argument registers\n");
+            for (const MachineOperand &MO : termIt->operands()) {
+                if (MO.isReg() && MO.getReg().isValid() && MO.isUse()) {
+                    LLVM_DEBUG(errs() << "--- excluding from restore: "
+                                      << TRI->getName(MO.getReg()) << "\n");
+                    tailCallArgRegs.insert(MO.getReg());
+                }
+            }
+        }
+    }
+
+    // Build a filtered CSI list that excludes tail-call argument registers.
+    // The existing block-transfer logic below then operates on this filtered
+    // list unchanged — any new block boundaries caused by gaps in the
+    // register sequence are handled naturally by the encoding-distance check.
+    SmallVector<CalleeSavedInfo, 16> filteredCSI;
+    for (const CalleeSavedInfo &info : CSI) {
+        if (tailCallArgRegs.count(info.getReg())) {
+            LLVM_DEBUG(errs() << "--- skipping restore of "
+                              << TRI->getName(info.getReg())
+                              << " (tail-call argument)\n");
+        } else {
+            filteredCSI.push_back(info);
+        }
+    }
+
+    if (filteredCSI.empty()) {
+        LLVM_DEBUG(errs() << "--- all CSRs are tail-call args, nothing to restore\n");
+        // All saved registers were argument registers. PTRA is still pointing
+        // CSI.size()*4 bytes above the return address. Correct it now so the
+        // callee's RETA pops the right address.
+        const P2InstrInfo *TII2 = MF.getSubtarget<P2Subtarget>().getInstrInfo();
+        int64_t correction = -(int64_t)(CSI.size() * 4);
+        TII2->adjustStackPtr(P2::PTRA, correction, MBB, MI);
+        return true;
+    }
+
+    // see spillCalleeSavedRegisters for explanation, this is just doing the same thing in reverse
     //
     // block size is 1 less than number of regs to write in a block transfer (which is also the number to give to setq)
     // go in reverse order since we are auto-decrementing ptra
     uint16_t block_size = 0;
-    int block_first_reg = CSI[CSI.size()-1].getReg();
+    int block_first_reg = filteredCSI[filteredCSI.size()-1].getReg();
 
     LLVM_DEBUG(errs() << "reg: " << block_first_reg << "\n");
 
-    for (int i = CSI.size()-2; i >= 0; i--) {
-        unsigned reg = CSI[i].getReg();
-        unsigned prev_reg = CSI[i+1].getReg();
+    for (int i = filteredCSI.size()-2; i >= 0; i--) {
+        unsigned reg = filteredCSI[i].getReg();
+        unsigned prev_reg = filteredCSI[i+1].getReg();
 
         LLVM_DEBUG(errs() << "reg: " << reg << "\n");
 
@@ -293,6 +343,19 @@ bool P2FrameLowering::restoreCalleeSavedRegisters(MachineBasicBlock &MBB, Machin
         .setMIFlag(MachineInstr::FrameDestroy);
 
     LLVM_DEBUG(errs() << "New block transfer to reg " << block_first_reg << "\n");
+
+    // If we skipped any argument registers, the PTRA is still pointing above
+    // the return address by skippedCount*4 bytes. Correct it so the callee's
+    // RETA pops the right address.
+    unsigned skippedCount = CSI.size() - filteredCSI.size();
+    if (skippedCount > 0) {
+        int64_t correction = -(int64_t)(skippedCount * 4);
+        LLVM_DEBUG(errs() << "--- correcting PTRA by " << correction
+                          << " bytes for " << skippedCount
+                          << " skipped tail-call arg register(s)\n");
+        const P2InstrInfo *TII2 = MF.getSubtarget<P2Subtarget>().getInstrInfo();
+        TII2->adjustStackPtr(P2::PTRA, correction, MBB, MI);
+    }
 
     return true;
 }

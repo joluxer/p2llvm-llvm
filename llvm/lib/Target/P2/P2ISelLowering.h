@@ -36,6 +36,12 @@ namespace llvm {
             // call subroutine
             CALL,
 
+            // tail call — lowers to JMP instead of CALLA; does not push PTRA.
+            // Operands: (Chain, Callee, args..., regmask)
+            // The node is a terminator; the caller's PTRA entry is consumed
+            // directly by the callee.
+            TAIL_CALL,
+
             // global address wrapper
             GAWRAPPER
         };
@@ -59,7 +65,7 @@ namespace llvm {
         /// getTargetNodeName - This method returns the name of a target specific
         //  DAG node.
         const char *getTargetNodeName(unsigned Opcode) const override;
-
+        
         SDValue LowerOperation(SDValue Op, SelectionDAG &DAG) const override;
 
         bool isOffsetFoldingLegal(const GlobalAddressSDNode *GA) const override {
@@ -128,6 +134,14 @@ namespace llvm {
 
         SDValue lowerLibcall64(RTLIB::Libcall lc, SDValue Op, SelectionDAG &DAG) const;
         SDValue lowerSelect64(SDValue Op, SelectionDAG &DAG) const;
+
+        // Returns true when CLI describes a call that may be lowered to a tail
+        // call (JMP instead of CALLA).  ArgLocs must already be populated by
+        // the caller's CCInfo.AnalyzeCallOperands() before this is called.
+        bool isEligibleForTailCallOptimization(
+                CallLoweringInfo &CLI,
+                CCState &CCInfo,
+                SmallVectorImpl<CCValAssign> &ArgLocs) const;
     };
 }
 
