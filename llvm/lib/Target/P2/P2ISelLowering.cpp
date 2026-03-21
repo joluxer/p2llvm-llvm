@@ -15,6 +15,7 @@
 
 #include "P2MachineFunctionInfo.h"
 #include "P2TargetMachine.h"
+#include "P2Subtarget.h"
 #include "P2TargetObjectFile.h"
 #include "MCTargetDesc/P2BaseInfo.h"
 #include "llvm/ADT/Statistic.h"
@@ -61,6 +62,7 @@ const char *P2TargetLowering::getTargetNodeName(unsigned Opcode) const {
 }
 
 P2TargetLowering::P2TargetLowering(const P2TargetMachine &TM) : TargetLowering(TM), target_machine(TM) {
+    setMaxAtomicSizeInBitsSupported(32);    // this should be valid for RD/WR/LONG/WORD/BYTE to hub RAM, else set it to 8
     
     addRegisterClass(MVT::i32, &P2::P2GPRRegClass);
     addRegisterClass(MVT::i64, &P2::P2GPRPairRegClass);
@@ -100,14 +102,30 @@ P2TargetLowering::P2TargetLowering(const P2TargetMachine &TM) : TargetLowering(T
     setOperationAction(ISD::MUL, MVT::i32, Expand);
 
     for (MVT VT : MVT::integer_valuetypes()) {
-        setOperationAction(ISD::ATOMIC_SWAP, VT, Expand);
-        setOperationAction(ISD::ATOMIC_CMP_SWAP, VT, Expand);
-        setOperationAction(ISD::ATOMIC_LOAD_NAND, VT, Expand);
-        setOperationAction(ISD::ATOMIC_LOAD_MAX, VT, Expand);
-        setOperationAction(ISD::ATOMIC_LOAD_MIN, VT, Expand);
-        setOperationAction(ISD::ATOMIC_LOAD_UMAX, VT, Expand);
-        setOperationAction(ISD::ATOMIC_LOAD_UMIN, VT, Expand);
+        setOperationAction(ISD::ATOMIC_SWAP,      VT, LibCall);
+        setOperationAction(ISD::ATOMIC_CMP_SWAP,  VT, LibCall);
+        setOperationAction(ISD::ATOMIC_LOAD_AND,  VT, LibCall);
+        setOperationAction(ISD::ATOMIC_LOAD_NAND, VT, LibCall);
+        setOperationAction(ISD::ATOMIC_LOAD_CLR,  VT, LibCall);
+        setOperationAction(ISD::ATOMIC_LOAD_OR,   VT, LibCall);
+        setOperationAction(ISD::ATOMIC_LOAD_XOR,  VT, LibCall);
+        setOperationAction(ISD::ATOMIC_LOAD_ADD,  VT, LibCall);
+        setOperationAction(ISD::ATOMIC_LOAD_SUB,  VT, LibCall);
+        setOperationAction(ISD::ATOMIC_LOAD_MAX,  VT, LibCall);
+        setOperationAction(ISD::ATOMIC_LOAD_MIN,  VT, LibCall);
+        setOperationAction(ISD::ATOMIC_LOAD_UMAX, VT, LibCall);
+        setOperationAction(ISD::ATOMIC_LOAD_UMIN, VT, LibCall);
+
+        if (VT == MVT::i8 || VT == MVT::i16 || VT == MVT::i32) {
+            setOperationAction(ISD::ATOMIC_LOAD,  VT, Custom);
+            setOperationAction(ISD::ATOMIC_STORE, VT, LibCall);
+        } else {
+            setOperationAction(ISD::ATOMIC_LOAD,  VT, LibCall);
+            setOperationAction(ISD::ATOMIC_STORE, VT, LibCall);
         }
+    }
+    
+    setOperationAction(ISD::ATOMIC_FENCE, MVT::Other, Custom);
     
     setOperationAction(ISD::SETCC, MVT::i32, Expand);
     setOperationAction(ISD::BR_JT, MVT::Other, Expand);
@@ -248,6 +266,21 @@ SDValue P2TargetLowering::lowerSHL64(SDValue Op, SelectionDAG &DAG) const {
     return lowerLibcall64(RTLIB::SHL_I64, Op, DAG);
 }
 
+TargetLowering::AtomicExpansionKind P2TargetLowering::shouldExpandAtomicStoreInIR(StoreInst *SI) const {
+    // Atomic stores must participate in the lock protocol to prevent
+    // store-vs-RMW races across cogs and ISRs. The AtomicExpandPass
+    // will convert atomic stores to __atomic_store_N libcalls on the IR level,
+    // which will acquire the appropriate hardware lock before writing.
+    // The opt-out feature -mno-atomic-store-lock disables this for applications
+    // that guarantee no concurrent RMW operations on the same location.
+    
+    const P2Subtarget &STI = target_machine.getSubtarget<P2Subtarget>(*SI->getParent()->getParent());
+    if (!STI.useAtomicStoreLock())
+        return AtomicExpansionKind::None;
+        
+    return AtomicExpansionKind::Expand;
+}
+
 // A call may be lowered to a tail call (JMP instead of CALLA) when all of
 // the following hold:
 //
@@ -281,6 +314,39 @@ bool P2TargetLowering::isEligibleForTailCallOptimization(
             return false;
 
     return true;
+}
+
+SDValue P2TargetLowering::lowerAtomicLoad(SDValue Op, SelectionDAG &DAG) const {
+    auto *aNode = cast<AtomicSDNode>(Op.getNode());
+    return DAG.getLoad(aNode->getValueType(0),
+                       SDLoc(Op),
+                       aNode->getChain(),
+                       aNode->getBasePtr(),
+                       aNode->getMemOperand());
+}
+
+void P2TargetLowering::replaceAtomicLoadResults(SDNode *N,
+        SmallVectorImpl<SDValue> &Results, SelectionDAG &DAG) const {
+    auto *aNode = cast<AtomicSDNode>(N);
+    SDValue load = DAG.getLoad(aNode->getValueType(0),
+                               SDLoc(N),
+                               aNode->getChain(),
+                               aNode->getBasePtr(),
+                               aNode->getMemOperand());
+    Results.push_back(load);         // Wert
+    Results.push_back(load.getValue(1)); // Chain
+}
+
+void P2TargetLowering::ReplaceNodeResults(SDNode *N,
+        SmallVectorImpl<SDValue> &Results, SelectionDAG &DAG) const {
+    switch (N->getOpcode()) {
+        case ISD::ATOMIC_LOAD:
+            replaceAtomicLoadResults(N, Results, DAG);
+            break;
+        default:
+            TargetLowering::ReplaceNodeResults(N, Results, DAG);
+            break;
+    }
 }
 
 SDValue P2TargetLowering::lowerSelect64(SDValue Op, SelectionDAG &DAG) const {
@@ -331,6 +397,33 @@ SDValue P2TargetLowering::lowerSelect64(SDValue Op, SelectionDAG &DAG) const {
     return res;
 }
 
+Instruction *P2TargetLowering::emitLeadingFence(IRBuilderBase &Builder,
+    Instruction *Inst, AtomicOrdering Ord) const {
+    // for store operations:
+    // release/seq_cst: compiler fence, to avoid pushing down previous stores
+    // after this one
+    if (isa<StoreInst>(Inst)) {
+        if (Ord == AtomicOrdering::Release ||
+            Ord == AtomicOrdering::SequentiallyConsistent)
+            return Builder.CreateFence(Ord);
+    }
+    // monotonic and load-acquire: no leading fence necessary
+    return nullptr;
+}
+
+Instruction *P2TargetLowering::emitTrailingFence(IRBuilderBase &Builder,
+    Instruction *Inst, AtomicOrdering Ord) const {
+    // for load operations:
+    // acquire/seq_cst: compiler fence, to avoid pulling up further loads
+    // before this one
+    if (isa<LoadInst>(Inst)) {
+        if (Ord == AtomicOrdering::Acquire ||
+            Ord == AtomicOrdering::SequentiallyConsistent)
+            return Builder.CreateFence(Ord);
+    }
+    return nullptr;
+}
+
 SDValue P2TargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
     switch (Op.getOpcode()) {
         case ISD::GlobalAddress:
@@ -347,6 +440,12 @@ SDValue P2TargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
             return lowerSRA64(Op, DAG);
         case ISD::SHL:
             return lowerSHL64(Op, DAG);
+        case ISD::ATOMIC_FENCE:
+            // P2 is TSO-like: no hardware fence instruction necessary
+            // just compiler fence
+            return Op.getOperand(0);  // return input chain, no output
+        case ISD::ATOMIC_LOAD: 
+            return lowerAtomicLoad(Op, DAG);
         case ISD::SELECT:
             if (Op->getValueType(0) == MVT::i64)
                 return lowerSelect64(Op, DAG);

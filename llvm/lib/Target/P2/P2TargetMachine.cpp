@@ -57,6 +57,7 @@ namespace {
     public:
         P2PassConfig(P2TargetMachine &TM, PassManagerBase &PM) : TargetPassConfig(TM, PM) {}
 
+        void addIRPasses() override;
         bool addInstSelector() override;
         void addPreEmitPass() override;
         void addPreRegAlloc() override;
@@ -65,6 +66,11 @@ namespace {
             return getTM<P2TargetMachine>();
         }
     };
+
+    void P2PassConfig::addIRPasses() {
+        addPass(createAtomicExpandPass());
+        TargetPassConfig::addIRPasses();
+    }
 
     // Install an instruction selector pass using
     // the ISelDag to gen P2 code.
@@ -85,7 +91,7 @@ namespace {
         P2TargetMachine &TM = getP2TargetMachine();
         addPass(createP2ExpandPseudosPass(TM));
     }
-
+    
 } // namespace
 
 TargetPassConfig *P2TargetMachine::createPassConfig(PassManagerBase &PM) {

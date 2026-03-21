@@ -33,11 +33,25 @@ def P2AsmParserVariant : AsmParserVariant {
     string RegisterPrefix = "$";
 }
 
-class Proc<string Name> : Processor<Name, NoItineraries, []>;
+// SubtargetFeatures
+// +atomic-store-lock (default): atomic stores use the lock protocol to prevent
+// store-vs-RMW races across cogs and ISRs.
+// -atomic-store-lock (opt-out): atomic stores are emitted as plain WRLONG.
+// Only safe when the application guarantees no concurrent RMW operations
+// on the same memory location from other cogs or ISRs.
+def FeatureAtomicStoreLock : SubtargetFeature<
+    "atomic-store-lock",
+    "hasAtomicStoreLock",
+    "true",
+    "Use lock protocol for atomic stores (default: enabled)">;
 
-def : Proc<"generic">;
-def : Proc<"p2">;
-def : Proc<"Propeller 2">;
+class Proc<string Name> : Processor<Name, NoItineraries, []>;
+class ProcWithFeatures<string Name, list<SubtargetFeature> Features>
+    : Processor<Name, NoItineraries, Features>;
+
+def : ProcWithFeatures<"generic",    [FeatureAtomicStoreLock]>;
+def : ProcWithFeatures<"p2",         [FeatureAtomicStoreLock]>;
+def : ProcWithFeatures<"Propeller 2",[FeatureAtomicStoreLock]>;
 
 def P2 : Target {
     let InstructionSet = P2InstrInfo;

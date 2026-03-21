@@ -27,6 +27,7 @@
 #include "clang/AST/OSLog.h"
 #include "clang/Basic/TargetBuiltins.h"
 #include "clang/Basic/TargetInfo.h"
+#include "clang/Basic/P2AtomicTypes.h"
 #include "clang/CodeGen/CGFunctionInfo.h"
 #include "llvm/ADT/APFloat.h"
 #include "llvm/ADT/APInt.h"
@@ -5433,6 +5434,8 @@ static Value *EmitTargetArchBuiltinExpr(CodeGenFunction *CGF,
   case llvm::Triple::riscv32:
   case llvm::Triple::riscv64:
     return CGF->EmitRISCVBuiltinExpr(BuiltinID, E, ReturnValue);
+  case llvm::Triple::p2:
+    return CGF->EmitP2BuiltinExpr(BuiltinID, E);
   default:
     return nullptr;
   }
@@ -19406,4 +19409,49 @@ Value *CodeGenFunction::EmitRISCVBuiltinExpr(unsigned BuiltinID,
 
   llvm::Function *F = CGM.getIntrinsic(ID, IntrinsicTypes);
   return Builder.CreateCall(F, Ops, "");
+}
+
+
+//===----------------------------------------------------------------------===//
+//                           P2 Builtin Lowering
+//
+// Copyright (C) 2026 Johannes Lode (MTRONIG GmbH)
+//===----------------------------------------------------------------------===//
+
+Value *CodeGenFunction::EmitP2BuiltinExpr(unsigned BuiltinID,
+                                           const CallExpr *E) {
+    int op;
+    switch (BuiltinID) {
+    case P2::BI__builtin_p2_atomic_lock:
+        op = P2AtomicLock;
+        break;
+    case P2::BI__builtin_p2_atomic_unlock:
+        op = P2AtomicUnlock;
+        break;
+    default:
+        llvm_unreachable("unexpected P2 builtin");
+    }
+
+    // Build IR for: void __p2_atomic_operation(void *ptr, int op)
+    // The const volatile qualifiers on ptr are an IR-level no-op; the callee
+    // carries the appropriate memory semantics through its implementation.
+    llvm::Type *voidTy    = llvm::Type::getVoidTy(getLLVMContext());
+    llvm::Type *voidPtrTy = llvm::Type::getInt8PtrTy(getLLVMContext());
+    llvm::Type *int32Ty   = llvm::Type::getInt32Ty(getLLVMContext());
+    llvm::FunctionType *fnTy =
+        llvm::FunctionType::get(voidTy, {voidPtrTy, int32Ty},
+                                /*isVarArg=*/false);
+
+    llvm::FunctionCallee callee =
+        CGM.getModule().getOrInsertFunction("__p2_atomic_operation", fnTy);
+
+    // Emit the pointer argument; bitcast to i8* to match the IR signature.
+    Value *ptr = EmitScalarExpr(E->getArg(0));
+    ptr = Builder.CreateBitCast(ptr, voidPtrTy);
+    Value *opVal = llvm::ConstantInt::get(int32Ty, op);
+
+    llvm::CallInst *ci = Builder.CreateCall(callee, {ptr, opVal});
+    ci->setDoesNotThrow();
+
+    return ci;
 }

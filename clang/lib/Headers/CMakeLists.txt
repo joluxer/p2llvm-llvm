@@ -101,6 +101,10 @@ set(webassembly_files
   wasm_simd128.h
   )
 
+set(p2_files
+  bits/p2_atomic_types.h
+  )
+
 set(x86_files
 # Intrinsics
   adxintrin.h
@@ -296,7 +300,7 @@ endfunction(clang_generate_header)
 
 
 # Copy header files from the source directory to the build directory
-foreach( f ${files} ${cuda_wrapper_files} ${ppc_wrapper_files} ${openmp_wrapper_files})
+foreach( f ${files} ${cuda_wrapper_files} ${ppc_wrapper_files} ${openmp_wrapper_files} ${p2_files})
   copy_header_to_output_dir(${CMAKE_CURRENT_SOURCE_DIR} ${f})
 endforeach( f )
 
@@ -384,6 +388,7 @@ add_dependencies("clang-resource-headers"
                  "mips-resource-headers"
                  "ppc-resource-headers"
                  "ppc-htm-resource-headers"
+                 "p2-resource-headers"
                  "riscv-resource-headers"
                  "systemz-resource-headers"
                  "ve-resource-headers"
@@ -407,6 +412,7 @@ add_header_target("hip-resource-headers" "${hip_files}")
 add_header_target("mips-resource-headers" "${mips_msa_files}")
 add_header_target("ppc-resource-headers" "${ppc_files};${ppc_wrapper_files}")
 add_header_target("ppc-htm-resource-headers" "${ppc_htm_files}")
+add_header_target("p2-resource-headers" "${p2_files}")
 add_header_target("riscv-resource-headers" "${riscv_generated_files}")
 add_header_target("systemz-resource-headers" "${systemz_files}")
 add_header_target("ve-resource-headers" "${ve_files}")
@@ -442,6 +448,11 @@ install(
 install(
   FILES ${openmp_wrapper_files}
   DESTINATION ${header_install_dir}/openmp_wrappers
+  COMPONENT clang-resource-headers)
+
+install(
+  FILES ${p2_files}
+  DESTINATION ${header_install_dir}/bits
   COMPONENT clang-resource-headers)
 
 #############################################################
@@ -517,6 +528,12 @@ install(
   DESTINATION ${header_install_dir}
   EXCLUDE_FROM_ALL
   COMPONENT ppc-htm-resource-headers)
+
+install(
+  FILES ${p2_files}
+  DESTINATION ${header_install_dir}/bits
+  EXCLUDE_FROM_ALL
+  COMPONENT p2-resource-headers)
 
 install(
   FILES ${riscv_generated_files}
@@ -614,6 +631,9 @@ if (NOT LLVM_ENABLE_IDE)
   add_llvm_install_targets(install-ppc-htm-resource-headers
                            DEPENDS ppc-htm-resource-headers
                            COMPONENT ppc-htm-resource-headers)
+  add_llvm_install_targets(install-p2-resource-headers
+                           DEPENDS p2-resource-headers
+                           COMPONENT p2-resource-headers)
   add_llvm_install_targets(install-riscv-resource-headers
                            DEPENDS riscv-resource-headers
                            COMPONENT riscv-resource-headers)

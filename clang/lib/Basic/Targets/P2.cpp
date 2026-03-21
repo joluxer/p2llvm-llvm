@@ -12,6 +12,7 @@
 
 #include "P2.h"
 #include "clang/Basic/MacroBuilder.h"
+#include "clang/Basic/Builtins.h"
 #include "llvm/ADT/StringSwitch.h"
 
 using namespace clang;
@@ -20,8 +21,22 @@ using namespace clang::targets;
 namespace clang {
 namespace targets {
 
+// Table of P2-specific builtin descriptors, generated from BuiltinsP2.def.
+static const Builtin::Info P2BuiltinInfoTable[] = {
+#define BUILTIN(ID, TYPE, ATTRS)                                               \
+    {#ID, TYPE, ATTRS, nullptr, ALL_LANGUAGES, nullptr},
+#include "clang/Basic/BuiltinsP2.def"
+};
+
 } // namespace targets
 } // namespace clang
+
+ArrayRef<Builtin::Info>
+clang::targets::P2TargetInfo::getTargetBuiltins() const {
+    return llvm::makeArrayRef(P2BuiltinInfoTable,
+                              clang::P2::LastTSBuiltin -
+                              clang::Builtin::FirstTSBuiltin);
+}
 
 const char *const P2TargetInfo::GCCRegNames[] = {
     "r0", "r1", "r2",  "r3",  "r4",  "r5",  "r6",  "r7",

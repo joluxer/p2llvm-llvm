@@ -66,8 +66,28 @@ namespace llvm {
         //  DAG node.
         const char *getTargetNodeName(unsigned Opcode) const override;
         
+        // the P2 has strong memory access ordering, no barrier instructions, but the compiler
+        // must take care of the instruction ordering and memory fencing in code emission
+        bool shouldInsertFencesForAtomic(const Instruction *I) const override {
+            return true;
+        }
+        
+        // Atomic stores must go through the lock protocol to prevent
+        // store-vs-RMW races across COGs and ISRs. shouldExpandAtomicStoreInIR
+        // causes AtomicExpandPass to replace store atomic with a __atomic_store_N
+        // libcall before ISel sees the node.
+        AtomicExpansionKind shouldExpandAtomicStoreInIR(StoreInst *SI) const override;
+        
+        Instruction *emitLeadingFence(IRBuilderBase &Builder, Instruction *Inst, 
+                AtomicOrdering Ord) const override;
+        Instruction *emitTrailingFence(IRBuilderBase &Builder, Instruction *Inst,
+                AtomicOrdering Ord) const override;
+        
         SDValue LowerOperation(SDValue Op, SelectionDAG &DAG) const override;
 
+        void ReplaceNodeResults(SDNode *N, SmallVectorImpl<SDValue> &Results,
+                        SelectionDAG &DAG) const override;
+        
         bool isOffsetFoldingLegal(const GlobalAddressSDNode *GA) const override {
             // Can't fold offsets, so need to add explicit instruction
             return false;
@@ -134,6 +154,10 @@ namespace llvm {
 
         SDValue lowerLibcall64(RTLIB::Libcall lc, SDValue Op, SelectionDAG &DAG) const;
         SDValue lowerSelect64(SDValue Op, SelectionDAG &DAG) const;
+        SDValue lowerAtomicLoad(SDValue Op, SelectionDAG &DAG) const;
+        
+        void replaceAtomicLoadResults(SDNode *N,
+                            SmallVectorImpl<SDValue> &Results, SelectionDAG &DAG) const;
 
         // Returns true when CLI describes a call that may be lowered to a tail
         // call (JMP instead of CALLA).  ArgLocs must already be populated by

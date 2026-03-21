@@ -1,0 +1,30 @@
+//===-- BuiltinsP2.def - P2 Builtin function database ----------*- C++ -*-===//
+//
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+// Copyright (C) 2024 Johannes Lode (MTRONIG GmbH)
+//
+//===----------------------------------------------------------------------===//
+//
+// This file defines the P2-specific builtin function database.
+// Users should not include this file directly.
+//
+// TYPE encoding (see clang/Basic/Builtins.h):
+//   v   = void (return type)
+//   v*  = void* (pointer to void; V = volatile qualifier, C = const qualifier)
+// ATTRS:
+//   "n" = nothrow
+//
+//===----------------------------------------------------------------------===//
+
+#if defined(BUILTIN) && !defined(TARGET_BUILTIN)
+#  define TARGET_BUILTIN(ID, TYPE, ATTRS, FEATURE) BUILTIN(ID, TYPE, ATTRS)
+#endif
+
+// Atomic locking primitives.
+// Both lower to __p2_atomic_operation() with a compile-time-constant P2AtomicOp.
+BUILTIN(__builtin_p2_atomic_lock,   "vv*", "n")
+BUILTIN(__builtin_p2_atomic_unlock, "vv*", "n")
+
