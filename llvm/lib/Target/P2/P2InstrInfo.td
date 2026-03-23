@@ -688,6 +688,14 @@ defm SETSE2     : P2InstLDm<0b1101011, 0b000100001, "setse2">;
 defm SETSE3     : P2InstLDm<0b1101011, 0b000100010, "setse3">;
 defm SETSE4     : P2InstLDm<0b1101011, 0b000100011, "setse4">;
 
+// S sub-opcode 000100101..000100111 (opcode matrix p2docs.github.io/p2_opmatrix.html, row 00100xxx)
+defm SETINT1    : P2InstLDm<0b1101011, 0b000100101, "setint1">;
+defm SETINT2    : P2InstLDm<0b1101011, 0b000100110, "setint2">;
+defm SETINT3    : P2InstLDm<0b1101011, 0b000100111, "setint3">;
+
+// S sub-opcode 000111111 (opcode matrix, row 00111xxx)
+defm COGATN     : P2InstLDm<0b1101011, 0b000111111, "cogatn">;
+
 def WAITSE1     : P2InstCZ<0b11010110, 0b000010100, 0b000100100, (outs), (ins), "waitse1">;
 def WAITSE2     : P2InstCZ<0b11010110, 0b000010101, 0b000100100, (outs), (ins), "waitse2">;
 def WAITSE3     : P2InstCZ<0b11010110, 0b000010110, 0b000100100, (outs), (ins), "waitse3">;
@@ -721,6 +729,30 @@ def POLLXRO     : P2InstCZ<0b11010110, 0b000001100, 0b000100100, (outs), (ins), 
 def POLLXRL     : P2InstCZ<0b11010110, 0b000001101, 0b000100100, (outs), (ins), "pollxrl">;
 def POLLATN     : P2InstCZ<0b11010110, 0b000001110, 0b000100100, (outs), (ins), "pollatn">;
 def POLLQMT     : P2InstCZ<0b11010110, 0b000001111, 0b000100100, (outs), (ins), "pollqmt">; 
+
+// WAIT instructions.
+// D field = POLL D field + 16 (sequential per opcode matrix, p2docs.github.io/p2_optable.html).
+// Cross-checked against existing WAITCT1/2/3 (D=17/18/19) and WAITSE1-4 (D=20-23).
+def WAITINT     : P2InstCZ<0b11010110, 0b000010000, 0b000100100, (outs), (ins), "waitint">;
+def WAITPAT     : P2InstCZ<0b11010110, 0b000011000, 0b000100100, (outs), (ins), "waitpat">;
+def WAITFBW     : P2InstCZ<0b11010110, 0b000011001, 0b000100100, (outs), (ins), "waitfbw">;
+def WAITXMT     : P2InstCZ<0b11010110, 0b000011010, 0b000100100, (outs), (ins), "waitxmt">;
+def WAITXFI     : P2InstCZ<0b11010110, 0b000011011, 0b000100100, (outs), (ins), "waitxfi">;
+def WAITXRO     : P2InstCZ<0b11010110, 0b000011100, 0b000100100, (outs), (ins), "waitxro">;
+def WAITXRL     : P2InstCZ<0b11010110, 0b000011101, 0b000100100, (outs), (ins), "waitxrl">;
+def WAITATN     : P2InstCZ<0b11010110, 0b000011110, 0b000100100, (outs), (ins), "waitatn">;
+
+// Interrupt control instructions. D field sequential after WAITATN (D=30).
+// No WAITQMT -- sequence goes directly to ALLOWI at D=31.
+// Source: p2docs.github.io/p2_opmatrix.html, row 00100xxx, column xxxxx100.
+def ALLOWI      : P2InstCZ<0b11010110, 0b000011111, 0b000100100, (outs), (ins), "allowi">;
+def STALLI      : P2InstCZ<0b11010110, 0b000100000, 0b000100100, (outs), (ins), "stalli">;
+def TRGINT1     : P2InstCZ<0b11010110, 0b000100001, 0b000100100, (outs), (ins), "trgint1">;
+def TRGINT2     : P2InstCZ<0b11010110, 0b000100010, 0b000100100, (outs), (ins), "trgint2">;
+def TRGINT3     : P2InstCZ<0b11010110, 0b000100011, 0b000100100, (outs), (ins), "trgint3">;
+def NIXINT1     : P2InstCZ<0b11010110, 0b000100100, 0b000100100, (outs), (ins), "nixint1">;
+def NIXINT2     : P2InstCZ<0b11010110, 0b000100101, 0b000100100, (outs), (ins), "nixint2">;
+def NIXINT3     : P2InstCZ<0b11010110, 0b000100110, 0b000100100, (outs), (ins), "nixint3">;
 
 /*--------------------------------*/
 /* misc instructions              */
