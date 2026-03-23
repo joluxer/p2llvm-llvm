@@ -73,10 +73,16 @@ BitVector P2RegisterInfo::getReservedRegs(const MachineFunction &MF) const {
 
     Reserved.set(P2::R30_R31); // reserve the long long return "register"
 
-    // reserve all "cogram" regsisters
+    // Reserve all generic COG-RAM registers (C0..C463).
+    // C463 (COG-RAM address 0x1CF) is separately called out below because it
+    // carries ABI semantics: it is the per-COG atomic ISR-inhibit flag
+    // (P2_COG_ATOMIC_ISR_FLAG). See clang/lib/Headers/bits/p2_register_base.h.
     for (int i = P2::C0; i <= P2::C463; i++) {
         Reserved.set(i);
     }
+    // Explicit named reservation — documents ABI intent independently of the
+    // loop above, so the reservation survives if the loop bounds change.
+    Reserved.set(P2::C463); // P2_COG_ATOMIC_ISR_FLAG — reserved by p2llvm ABI
     
     return Reserved;
 }
