@@ -82,6 +82,8 @@ public:
 
   ArrayRef<const char *> getGCCRegNames() const override;
 
+  bool isValidGCCRegisterName(StringRef Name) const override;
+
   ArrayRef<TargetInfo::AddlRegName> getGCCAddlRegNames() const override {
     return None;
   }

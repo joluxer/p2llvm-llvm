@@ -21,7 +21,7 @@ include "P2CallingConv.td"
 def P2InstrInfo : InstrInfo;
 
 def P2AsmParser : AsmParser {
-    let ShouldEmitMatchRegisterName = 0;
+    let ShouldEmitMatchRegisterName = 1;
     let HasMnemonicFirst = 0;
     // let AsmParserInstCleanup  = "cleanupInst";
 }

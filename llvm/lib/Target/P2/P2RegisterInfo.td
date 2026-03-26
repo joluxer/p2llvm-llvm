@@ -149,6 +149,14 @@ def P2GPR : RegisterClass<"P2", [i32], 32, (add
     DIRA, DIRB, OUTA, OUTB, INA, INB
 )>;
 
+// C463 (COG-RAM 0x1CF) is the per-COG atomic ISR-inhibit flag defined by the
+// p2llvm ABI (P2_COG_ATOMIC_ISR_FLAG in <bits/p2_register_base.h>).
+// It must never be touched by the register allocator, but must be resolvable
+// by name for "register int foo asm("C463")" in C/C++ runtime sources.
+def P2IsrFlagReg : RegisterClass<"P2", [i32], 32, (add C463)> {
+    let isAllocatable = 0;
+}
+
 def P2GPRPair : RegisterClass<"P2", [i64], 64, (add R0_R1, R2_R3, R4_R5, R6_R7,
                                                     R8_R9, R10_R11, R12_R13, R14_R15,
                                                     R16_R17, R18_R19, R20_R21, R22_R23,
