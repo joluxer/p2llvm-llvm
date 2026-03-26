@@ -8860,15 +8860,22 @@ let CategoryName = "Inline Assembly Issue" in {
     "use constraint modifier \"%0\"">;
   def note_asm_input_duplicate_first : Note<
     "constraint '%0' is already present here">;
- def error_duplicate_asm_operand_name : Error<
+  def error_duplicate_asm_operand_name : Error<
     "duplicate use of asm operand name \"%0\"">;
- def note_duplicate_asm_operand_name : Note<
+  def note_duplicate_asm_operand_name : Note<
     "asm operand name \"%0\" first referenced here">;
+
+  // P2 target-specific inline-asm diagnostics.
+  def warn_p2_unmanaged_stalli : Warning<
+    "direct use of '%0' in inline assembly bypasses the ISR-inhibit "
+    "state accounting of libp2 in c463; use stalli()/allowi() from libp2 instead or "
+    "disable this warning with -Wno-p2-unmanaged-stalli">,
+    InGroup<P2UnmanagedStalli>;
 }
 
-  def error_inoutput_conflict_with_clobber : Error<
-    "asm-specifier for input or output variable conflicts with asm"
-    " clobber list">;
+def error_inoutput_conflict_with_clobber : Error<
+  "asm-specifier for input or output variable conflicts with asm"
+  " clobber list">;
 
 let CategoryName = "Semantic Issue" in {
 

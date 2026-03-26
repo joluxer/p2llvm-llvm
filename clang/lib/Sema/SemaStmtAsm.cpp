@@ -238,6 +238,51 @@ getClobberConflictLocation(MultiExprArg Exprs, StringLiteral **Constraints,
   return SourceLocation();
 }
 
+/// checkP2UnmanagedStalliInlineAsm - Warn if the inline-asm template string
+/// contains a direct STALLI or ALLOWI instruction on a P2 target.
+///
+/// The check is word-boundary-safe and case-insensitive. Each match in the
+/// same asm() string produces an individual diagnostic so the user sees every
+/// occurrence. Translation units that implement _stalli()/_allowi() (i.e.
+/// the libp2 stalli compile unit) must be compiled with
+/// -Wno-p2-unmanaged-stalli to suppress these diagnostics.
+static void checkP2UnmanagedStalliInlineAsm(Sema &S,
+                                            const StringLiteral *AsmStr,
+                                            SourceLocation Loc) {
+  // Restrict to P2 target only.
+  if (S.Context.getTargetInfo().getTriple().getArch() != llvm::Triple::p2)
+    return;
+
+  // Skip if the diagnostic group is suppressed (-Wno-p2-unmanaged-stalli).
+  if (S.Diags.isIgnored(diag::warn_p2_unmanaged_stalli, Loc))
+    return;
+
+  StringRef Text = AsmStr->getString();
+  // lower() returns std::string; keep it alive for the duration of the search.
+  std::string LowerText = Text.lower();
+  StringRef Lower(LowerText);
+
+  static const StringRef Mnemonics[] = {"stalli", "allowi"};
+
+  for (StringRef Mnemonic : Mnemonics) {
+    size_t Pos = 0;
+    while ((Pos = Lower.find(Mnemonic, Pos)) != StringRef::npos) {
+      size_t End = Pos + Mnemonic.size();
+
+      // Word-boundary check on the original (unmodified) text.
+      bool LeftOk  = (Pos == 0) ||
+                     (!isAlphanumeric(Text[Pos - 1]) && Text[Pos - 1] != '_');
+      bool RightOk = (End >= Text.size()) ||
+                     (!isAlphanumeric(Text[End]) && Text[End] != '_');
+
+      if (LeftOk && RightOk)
+        S.Diag(Loc, diag::warn_p2_unmanaged_stalli) << Text.substr(Pos, Mnemonic.size());
+
+      Pos = End;
+    }
+  }
+}
+
 StmtResult Sema::ActOnGCCAsmStmt(SourceLocation AsmLoc, bool IsSimple,
                                  bool IsVolatile, unsigned NumOutputs,
                                  unsigned NumInputs, IdentifierInfo **Names,
@@ -255,6 +300,9 @@ StmtResult Sema::ActOnGCCAsmStmt(SourceLocation AsmLoc, bool IsSimple,
 
   // The parser verifies that there is a string literal here.
   assert(AsmString->isOrdinary());
+
+  // P2: warn on direct STALLI/ALLOWI in inline assembly.
+  checkP2UnmanagedStalliInlineAsm(*this, AsmString, AsmLoc);
 
   FunctionDecl *FD = dyn_cast<FunctionDecl>(getCurLexicalContext());
   llvm::StringMap<bool> FeatureMap;

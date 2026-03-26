@@ -1380,3 +1380,6 @@ def BranchProtection : DiagGroup<"branch-protection">;
 // HLSL diagnostic groups
 // Warnings for HLSL Clang extensions
 def HLSLExtension : DiagGroup<"hlsl-extensions">;
+
+// P2 target-specific diagnostics.
+def P2UnmanagedStalli : DiagGroup<"p2-unmanaged-stalli">;
