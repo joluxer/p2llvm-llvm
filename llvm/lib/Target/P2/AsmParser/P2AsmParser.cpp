@@ -563,62 +563,20 @@ int P2AsmParser::matchRegisterByNumber(unsigned RegNum, StringRef Mnemonic) {
     return getReg(P2::P2GPRRegClassID, RegNum);
 }
 
+#define GET_REGISTER_MATCHER
+#define GET_MATCHER_IMPLEMENTATION
+#include "P2GenAsmMatcher.inc"
+
 int P2AsmParser::matchRegisterName(StringRef Name) {
     LLVM_DEBUG(dbgs() << "Matching register by name: " << Name << "\n");
 
-    // don't try to match Cog RAM by our fake register name, only match specific registers by name
-    int reg = StringSwitch<unsigned>(Name)
-            .Case("r0",     P2::R0)
-            .Case("r1",     P2::R1)
-            .Case("r2",     P2::R2)
-            .Case("r3",     P2::R3)
-            .Case("r4",     P2::R4)
-            .Case("r5",     P2::R5)
-            .Case("r6",     P2::R6)
-            .Case("r7",     P2::R7)
-            .Case("r8",     P2::R8)
-            .Case("r9",     P2::R9)
-            .Case("r10",    P2::R10)
-            .Case("r11",    P2::R11)
-            .Case("r12",    P2::R12)
-            .Case("r13",    P2::R13)
-            .Case("r14",    P2::R14)
-            .Case("r15",    P2::R15)
-            .Case("r16",    P2::R16)
-            .Case("r17",    P2::R17)
-            .Case("r18",    P2::R18)
-            .Case("r19",    P2::R19)
-            .Case("r20",    P2::R20)
-            .Case("r21",    P2::R21)
-            .Case("r22",    P2::R22)
-            .Case("r23",    P2::R23)
-            .Case("r24",    P2::R24)
-            .Case("r25",    P2::R25)
-            .Case("r26",    P2::R26)
-            .Case("r27",    P2::R27)
-            .Case("r28",    P2::R28)
-            .Case("r29",    P2::R29)
-            .Case("r30",    P2::R30)
-            .Case("r31",    P2::R31)
-            .Case("ijmp3",  P2::IJMP3)
-            .Case("iret3",  P2::IRET3)
-            .Case("ijmp2",  P2::IJMP2)
-            .Case("iret2",  P2::IRET2)
-            .Case("ijmp1",  P2::IJMP1)
-            .Case("iret1",  P2::IRET1)
-            .Case("pa",     P2::PA)
-            .Case("pb",     P2::PB)
-            .Case("ptra",   P2::PTRA)
-            .Case("ptrb",   P2::PTRB)
-            .Case("dira",   P2::DIRA)
-            .Case("dirb",   P2::DIRB)
-            .Case("outa",   P2::OUTA)
-            .Case("outb",   P2::OUTB)
-            .Case("ina",    P2::INA)
-            .Case("inb",    P2::INB)
-            .Default(-1);
-    
-    return reg;
+    // Use the TableGen-generated matcher — covers r0-r31, c0-c463, and all
+    // named special-purpose registers. Input is already lowercased by caller.
+    unsigned reg = MatchRegisterName(Name);
+    if (reg != P2::NoRegister)
+        return (int)reg;
+
+    return -1;
 }
 
 bool P2AsmParser::tryParseRegisterOperand(OperandVector &Operands, StringRef Mnemonic) {
@@ -826,7 +784,3 @@ bool P2AsmParser::parseOperand(OperandVector &Operands, StringRef Mnemonic) {
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeP2AsmParser() {
     RegisterMCAsmParser<P2AsmParser> X(getTheP2Target());
 }
-
-#define GET_REGISTER_MATCHER
-#define GET_MATCHER_IMPLEMENTATION
-#include "P2GenAsmMatcher.inc"

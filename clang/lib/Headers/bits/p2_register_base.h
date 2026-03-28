@@ -39,7 +39,7 @@
  *   ...
  *   r31 = P2_COG_REG_BASE + 31  (0x1EF)
  */
-#define P2_COG_REG_BASE  0x1D0u
+#define P2_COG_REG_BASE  (0x1D0u)
 
 /*
  * COG-RAM address reserved for the per-COG atomic ISR-inhibit flag.
@@ -48,7 +48,8 @@
  * P2RegisterInfo.td. This slot is reserved by the p2llvm ABI and must
  * not be used by application code or compiler register allocation.
  */
-#define P2_COG_ATOMIC_ISR_FLAG  (P2_COG_REG_BASE - 1u)  /* 0x1CF */
+#define P2_COG_ATOMIC_ISR_FLAG      (0x1CF)  /* 0x1CF = 463 */
+#define P2_COG_ATOMIC_ISR_FLAG_NAME "c463"   /* asm register name */
 
 /*
  * Bit-field layout of P2_COG_ATOMIC_ISR_FLAG (COG-address 0x1CF).

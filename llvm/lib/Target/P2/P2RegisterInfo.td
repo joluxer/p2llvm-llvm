@@ -137,7 +137,7 @@ let SubRegIndices = [sub0, sub1], CoveredBySubRegs = 1, Namespace = "P2" in {
 def P2GPR : RegisterClass<"P2", [i32], 32, (add
     // all of our generic Cog RAM registers. put these first so that numbers are in order
     // C463 (0x1CF) is reserved as P2_COG_ATOMIC_ISR_FLAG — excluded from allocation.
-    (sequence "C%u", 0, 462),
+    (sequence "C%u", 0, 463),
     // general purpose registers for the compilers to use
     R0, R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, R16,
     R17, R18, R19, R20, R21, R22, R23, R24, R25, R26, R27, R28, R29, R30, R31,
@@ -148,14 +148,6 @@ def P2GPR : RegisterClass<"P2", [i32], 32, (add
     // i/o registers
     DIRA, DIRB, OUTA, OUTB, INA, INB
 )>;
-
-// C463 (COG-RAM 0x1CF) is the per-COG atomic ISR-inhibit flag defined by the
-// p2llvm ABI (P2_COG_ATOMIC_ISR_FLAG in <bits/p2_register_base.h>).
-// It must never be touched by the register allocator, but must be resolvable
-// by name for "register int foo asm("C463")" in C/C++ runtime sources.
-def P2IsrFlagReg : RegisterClass<"P2", [i32], 32, (add C463)> {
-    let isAllocatable = 0;
-}
 
 def P2GPRPair : RegisterClass<"P2", [i64], 64, (add R0_R1, R2_R3, R4_R5, R6_R7,
                                                     R8_R9, R10_R11, R12_R13, R14_R15,

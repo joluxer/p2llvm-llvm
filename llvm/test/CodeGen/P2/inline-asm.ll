@@ -42,3 +42,17 @@ define void @inline_asm_large_imm_operand() {
     call void asm sideeffect "add r0, $0", "i"(i32 1000) nounwind
     ret void
 }
+
+define void @inline_asm_c463_write(i32 %val) {
+; CHECK-LABEL: inline_asm_c463_write:
+; CHECK: mov c463, {{r[0-9]+}}
+    call void asm sideeffect "mov c463, $0", "r"(i32 %val) nounwind
+    ret void
+}
+
+define i32 @inline_asm_c463_read() {
+; CHECK-LABEL: inline_asm_c463_read:
+; CHECK: mov {{r[0-9]+}}, c463
+    %val = call i32 asm sideeffect "mov $0, c463", "=r"() nounwind
+    ret i32 %val
+}

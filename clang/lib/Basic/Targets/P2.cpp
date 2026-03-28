@@ -59,7 +59,7 @@ bool P2TargetInfo::isValidGCCRegisterName(StringRef Name) const {
     // TableGen emits lowercase names ("c0"..."c463") via '"c"#i', so the
     // asm() constraint string in C sources must be lowercase too.
     // C463 (0x1CF) is the P2_COG_ATOMIC_ISR_FLAG slot; it is excluded from
-    // register allocation (P2IsrFlagReg, isAllocatable=0) but valid here.
+    // register allocation via Reserved.set() in P2RegisterInfo.cpp, but valid here.
     if (Name.size() >= 2 && Name[0] == 'c') {
         unsigned N;
         if (!Name.drop_front(1).getAsInteger(10, N))
