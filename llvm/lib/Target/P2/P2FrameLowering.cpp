@@ -24,7 +24,7 @@
 #include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/CodeGen/RegisterScavenging.h"
-#include "llvm/ADT/SmallSet.h"
+//#include "llvm/ADT/SmallSet.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/Function.h"
 #include "llvm/Support/CommandLine.h"
@@ -113,7 +113,33 @@ void P2FrameLowering::determineCalleeSaves(MachineFunction &MF, BitVector &Saved
     }
 
     TargetFrameLowering::determineCalleeSaves(MF, SavedRegs, RS);
-    // eventually might need to add to this to re-order the frame index based to match what will happen in spilling/restoring
+
+    // Tail-call-only optimisation: if every return in this function is a tail
+    // call, the caller can never observe the callee-saved registers after the
+    // call returns — because it never does.  It is therefore safe to remove all
+    // registers from SavedRegs, suppressing both the spill in
+    // spillCalleeSavedRegisters and the restore/correction in
+    // restoreCalleeSavedRegisters.
+    //
+    // Condition: no basic block has a terminator that is both a return
+    // instruction and not a TCALL_a / TCALL_r pseudo.
+    //
+    // Note: functions with mixed return paths (some RETA, some TCALL) are
+    // handled conservatively — SavedRegs is left unchanged.  A per-register
+    // CFG reachability analysis would be required to optimise those, and the
+    // added complexity is not justified for the expected code patterns.
+    for (const MachineBasicBlock &mbb : MF) {
+        auto termIt = mbb.getFirstTerminator();
+        if (termIt == mbb.end()) continue;
+        unsigned opc = termIt->getOpcode();
+        if (termIt->isReturn() && opc != P2::TCALL_a && opc != P2::TCALL_r) {
+            return; // non-tail-call return found — conservative fallback
+        }
+    }
+
+    // Every return is a tail call: no saves needed.
+    LLVM_DEBUG(errs() << "Tail-call-only function, clearing SavedRegs\n");
+    SavedRegs.reset();
 }
 
 bool P2FrameLowering::spillCalleeSavedRegisters(MachineBasicBlock &MBB, MachineBasicBlock::iterator MI,
@@ -226,6 +252,7 @@ bool P2FrameLowering::restoreCalleeSavedRegisters(MachineBasicBlock &MBB, Machin
         return false;
     }
 
+/*
     // Tail-call argument registers must not be restored: they carry the
     // arguments for the callee and restoring them from the stack would
     // overwrite the prepared values.
@@ -274,19 +301,27 @@ bool P2FrameLowering::restoreCalleeSavedRegisters(MachineBasicBlock &MBB, Machin
         TII2->adjustStackPtr(P2::PTRA, correction, MBB, MI);
         return true;
     }
+*/
 
     // see spillCalleeSavedRegisters for explanation, this is just doing the same thing in reverse
     //
     // block size is 1 less than number of regs to write in a block transfer (which is also the number to give to setq)
     // go in reverse order since we are auto-decrementing ptra
     uint16_t block_size = 0;
-    int block_first_reg = filteredCSI[filteredCSI.size()-1].getReg();
+//    int block_first_reg = filteredCSI[filteredCSI.size()-1].getReg();
+    int block_first_reg = CSI[CSI.size()-1].getReg();
 
     LLVM_DEBUG(errs() << "reg: " << block_first_reg << "\n");
 
+/*
     for (int i = filteredCSI.size()-2; i >= 0; i--) {
         unsigned reg = filteredCSI[i].getReg();
         unsigned prev_reg = filteredCSI[i+1].getReg();
+*/
+
+    for (int i = CSI.size()-2; i >= 0; i--) {
+        unsigned reg = CSI[i].getReg();
+        unsigned prev_reg = CSI[i+1].getReg();
 
         LLVM_DEBUG(errs() << "reg: " << reg << "\n");
 
@@ -344,6 +379,7 @@ bool P2FrameLowering::restoreCalleeSavedRegisters(MachineBasicBlock &MBB, Machin
 
     LLVM_DEBUG(errs() << "New block transfer to reg " << block_first_reg << "\n");
 
+/*
     // If we skipped any argument registers, the PTRA is still pointing above
     // the return address by skippedCount*4 bytes. Correct it so the callee's
     // RETA pops the right address.
@@ -356,6 +392,7 @@ bool P2FrameLowering::restoreCalleeSavedRegisters(MachineBasicBlock &MBB, Machin
         const P2InstrInfo *TII2 = MF.getSubtarget<P2Subtarget>().getInstrInfo();
         TII2->adjustStackPtr(P2::PTRA, correction, MBB, MI);
     }
+*/
 
     return true;
 }
