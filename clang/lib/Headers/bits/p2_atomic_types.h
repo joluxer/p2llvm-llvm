@@ -28,18 +28,22 @@
 /**
  * @brief Operations dispatched through __p2_atomic_operation().
  *
- * P2AtomicInit   - Allocate hardware locks via LOCKNEW. Called by startup.
- * P2AtomicLock   - Acquire the lock for ptr's address (LOCKTRY loop).
- * P2AtomicUnlock - Release the lock for ptr's address (LOCKREL).
- * P2AtomicStallI - Enable ISR inhibit for the calling COG (STALLI).
- * P2AtomicAllowI - Disable ISR inhibit for the calling COG (ALLOWI).
+ * P2AtomicSysInit - Boot-COG/COG0: allocate hardware locks.
+ * P2AtomicCogInit - Every COG: sync C463 only, no lock allocation.
+ * P2AtomicDeinit  - usable by every COG: return locks to pool + clear C463, should be done by last running COG
+ * P2AtomicLock    - Acquire the lock for ptr's address (LOCKTRY loop).
+ * P2AtomicUnlock  - Release the lock for ptr's address (LOCKREL).
+ * P2AtomicStallI  - Enable ISR inhibit for the calling COG (STALLI).
+ * P2AtomicAllowI  - Disable ISR inhibit for the calling COG (ALLOWI).
  */
 typedef enum {
-    P2AtomicInit    = 0,
-    P2AtomicLock    = 1,
-    P2AtomicUnlock  = 2,
-    P2AtomicStallI  = 3,
-    P2AtomicAllowI  = 4
+    P2AtomicSysInit   = 0,
+    P2AtomicCogInit   = 1,
+    P2AtomicDeinit    = 2,
+    P2AtomicLock      = 3,
+    P2AtomicUnlock    = 4,
+    P2AtomicStallI    = 5,
+    P2AtomicAllowI    = 6,
 } P2AtomicOp;
 
 #endif /* _BITS_P2_ATOMIC_TYPES_H */
