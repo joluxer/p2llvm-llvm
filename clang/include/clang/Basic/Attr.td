@@ -3980,6 +3980,34 @@ def Cogcache : InheritableAttr, TargetSpecificAttr<TargetP2> {
   let Args = [];
 }
 
+def Lutram : InheritableAttr, TargetSpecificAttr<TargetP2> {
+  let Spellings = [Clang<"lutram">];
+  let Subjects = SubjectList<[Function, GlobalVar]>;
+  let Documentation = [LutramDocs];
+  let Args = [];
+}
+
+def Cogram : InheritableAttr, TargetSpecificAttr<TargetP2> {
+  let Spellings = [Clang<"cogram">];
+  let Subjects = SubjectList<[Function, GlobalVar]>;
+  let Documentation = [CogramDocs];
+  let Args = [];
+}
+
+def Coglocal : InheritableAttr, TargetSpecificAttr<TargetP2> {
+  let Spellings = [Clang<"coglocal">];
+  let Subjects = SubjectList<[Function]>;
+  let Documentation = [CoglocalDocs];
+  let Args = [];
+}
+
+def Cogprefer : InheritableAttr, TargetSpecificAttr<TargetP2> {
+  let Spellings = [Clang<"cogprefer">];
+  let Subjects = SubjectList<[Function]>;
+  let Documentation = [CogpreferDocs];
+  let Args = [];
+}
+
 def Builtin : InheritableAttr {
   let Spellings = [];
   let Args = [UnsignedArgument<"ID">];

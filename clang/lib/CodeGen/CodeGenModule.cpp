@@ -2059,6 +2059,12 @@ void CodeGenModule::SetLLVMFunctionAttributesForDefinition(const Decl *D,
     if (FD->hasAttr<CogcacheAttr>()) {
       B.addAttribute("cogcache");
     }
+
+    if (FD->hasAttr<LutramAttr>() || FD->hasAttr<CogtextAttr>() ||
+        FD->hasAttr<CoglocalAttr>() || FD->hasAttr<CogpreferAttr>())
+      F->setSection(".lut." + F->getName().str());
+    else if (FD->hasAttr<CogramAttr>())
+      F->setSection(".cog." + F->getName().str());
   }
 
   F->addFnAttrs(B);
@@ -4897,6 +4903,11 @@ void CodeGenModule::EmitGlobalVarDefinition(const VarDecl *D,
   }
 
   setNonAliasAttributes(D, GV);
+
+  if (D->hasAttr<LutramAttr>())
+    GV->setSection(".lut." + GV->getName().str());
+  else if (D->hasAttr<CogramAttr>())
+    GV->setSection(".cog." + GV->getName().str());
 
   if (D->getTLSKind() && !GV->isThreadLocal()) {
     if (D->getTLSKind() == VarDecl::TLS_Dynamic)

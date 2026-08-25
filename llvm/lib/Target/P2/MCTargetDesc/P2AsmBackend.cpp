@@ -17,6 +17,7 @@
 #include "MCTargetDesc/P2MCTargetDesc.h"
 
 #include "P2Subtarget.h"
+#include "llvm/Support/P2AddressSpaces.h"
 
 #include "llvm/MC/MCAsmBackend.h"
 #include "llvm/MC/MCAssembler.h"
@@ -33,6 +34,7 @@
 #define DEBUG_TYPE "p2-asm-backend"
 
 using namespace llvm;
+
 static unsigned adjustFixupValue(const MCFixup &Fixup, uint64_t Value, MCContext *Ctx = nullptr) {
 
     unsigned Kind = Fixup.getKind();
@@ -55,6 +57,61 @@ static unsigned adjustFixupValue(const MCFixup &Fixup, uint64_t Value, MCContext
             Value /= 4;
             Value &= 0x1ff;
             break;
+
+        case P2::fixup_P2_COG_PC20:
+            Value /= 4;
+            Value &= 0xfffff;
+            break;
+        case P2::fixup_P2_COG_PC9:
+        case P2::fixup_P2_COG_DATA9:
+            Value /= 4;
+            Value &= 0x1ff;
+            break;
+        case P2::fixup_P2_COG_PCREL9:
+            Value -= 4;
+            Value /= 4;
+            Value &= 0x1ff;
+            break;
+
+        case P2::fixup_P2_LUT_PC20:
+            Value = (Value - P2LutPcBase) / 4 + P2LutPcBase;
+            Value &= 0xfffff;
+            break;
+        case P2::fixup_P2_LUT_PC9:
+        case P2::fixup_P2_LUT_DATA9:
+            Value = (Value - P2LutPcBase) / 4;
+            Value &= 0x1ff;
+            break;
+        case P2::fixup_P2_LUT_PCREL9:
+            Value -= 4;
+            Value /= 4;
+            Value &= 0x1ff;
+            break;
+
+        case P2::fixup_P2_HUB_PC20:
+            Value &= 0xfffff;
+            break;
+        case P2::fixup_P2_HUB_PCREL20:
+            Value -= 4;
+            Value &= 0xfffff;
+            break;
+
+        case P2::fixup_P2_HUB_PCAUG32:
+        case P2::fixup_P2_HUB_DATAAUG32:
+            Value >>= 9;
+            Value &= 0x7fffff;
+            break;
+        case P2::fixup_P2_COG_PCAUG32:
+            Value /= 4;
+            Value >>= 9;
+            Value &= 0x7fffff;
+            break;
+        case P2::fixup_P2_LUT_PCAUG32:
+            Value = (Value - P2LutPcBase) / 4 + P2LutPcBase;
+            Value >>= 9;
+            Value &= 0x7fffff;
+            break;
+
         default: break;
     }
 
@@ -123,8 +180,23 @@ const MCFixupKindInfo &P2AsmBackend::getFixupKindInfo(MCFixupKind Kind) const {
         { "fixup_P2_20",        0,      20,   0},
         { "fixup_P2_PC20",      0,      20,   MCFixupKindInfo::FKF_IsPCRel},
         { "fixup_P2_AUG20",     0,      20,   0},
-        { "fixup_P2_COG9",      0,      9,    0},
-        { "fixup_P2_PCCOG9",    0,      9,    MCFixupKindInfo::FKF_IsPCRel}
+        { "fixup_P2_COG9",           0,  9, 0 },
+        { "fixup_P2_PCCOG9",         0,  9, MCFixupKindInfo::FKF_IsPCRel },
+
+        { "fixup_P2_COG_PC20",       0, 20, 0 },
+        { "fixup_P2_COG_PC9",        0,  9, 0 },
+        { "fixup_P2_COG_DATA9",      0,  9, 0 },
+        { "fixup_P2_COG_PCREL9",     0,  9, MCFixupKindInfo::FKF_IsPCRel },
+        { "fixup_P2_LUT_PC20",       0, 20, 0 },
+        { "fixup_P2_LUT_PC9",        0,  9, 0 },
+        { "fixup_P2_LUT_DATA9",      0,  9, 0 },
+        { "fixup_P2_LUT_PCREL9",     0,  9, MCFixupKindInfo::FKF_IsPCRel },
+        { "fixup_P2_HUB_PC20",       0, 20, 0 },
+        { "fixup_P2_HUB_PCREL20",    0, 20, MCFixupKindInfo::FKF_IsPCRel },
+        { "fixup_P2_HUB_PCAUG32",    0, 23, 0 },
+        { "fixup_P2_COG_PCAUG32",    0, 23, 0 },
+        { "fixup_P2_LUT_PCAUG32",    0, 23, 0 },
+        { "fixup_P2_HUB_DATAAUG32",  0, 23, 0 },
     };
 
     if (Kind < FirstTargetFixupKind)

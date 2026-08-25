@@ -5,8 +5,33 @@
 ELF_RELOC(R_P2_NONE,                0)
 ELF_RELOC(R_P2_32,                  1)
 ELF_RELOC(R_P2_PC32,                2)
-ELF_RELOC(R_P2_20,                  3)
-ELF_RELOC(R_P2_PC20,                4)
-ELF_RELOC(R_P2_AUG20,               5)
-ELF_RELOC(R_P2_COG9,                6)
-ELF_RELOC(R_P2_PCCOG9,              7)
+ELF_RELOC(R_P2_20,                  3)  // obsolete: hard error in Phase-2 linker
+ELF_RELOC(R_P2_PC20,                4)  // obsolete: hard error in Phase-2 linker
+ELF_RELOC(R_P2_AUG20,               5)  // obsolete: hard error in Phase-2 linker
+ELF_RELOC(R_P2_COG9,                6)  // obsolete: hard error in Phase-2 linker
+ELF_RELOC(R_P2_PCCOG9,              7)  // obsolete: hard error in Phase-2 linker
+
+// Phase-2 typed relocations — naming scheme: R_P2_<SPACE>_<KIND><BITS>
+// SPACE: COG | LUT | HUB
+// KIND:  PC (absolute program-counter value)
+//        DATA (data-access address operand)
+//        REL (PC-relative branch offset, signed long units)
+//        AUG (AUGx+branch instruction pair)
+// BITS:  instruction field width in bits
+
+ELF_RELOC(R_P2_COG_PC20,            8)  // cogram code: absolute JMP/CALL, 20-bit field, val/4
+ELF_RELOC(R_P2_COG_PC9,             9)  // cogram code: absolute short-branch target, 9-bit field, val/4 (reserved)
+ELF_RELOC(R_P2_COG_DATA9,          10)  // cogram data: ALU SRC/DEST register index, 9-bit field, val/4
+ELF_RELOC(R_P2_COG_PCREL9,         11)  // cogram code: PC-relative short branch, 9-bit signed long offset; supersedes R_P2_PCCOG9
+
+ELF_RELOC(R_P2_LUT_PC20,           12)  // lutram/coglocal code: absolute JMP/CALL, 20-bit field, (val-base)/4+0x200
+ELF_RELOC(R_P2_LUT_PC9,            13)  // lutram code: 9-bit LUT PC index, supersedes R_P2_COG9
+ELF_RELOC(R_P2_LUT_DATA9,          14)  // lutram data: RDLUT/WRLUT address operand, 9-bit field, (val-base)/4
+ELF_RELOC(R_P2_LUT_PCREL9,         15)  // lutram code: PC-relative short branch, 9-bit signed long offset; supersedes R_P2_PCCOG9
+
+ELF_RELOC(R_P2_HUB_PC20,           16)  // hub code: absolute 20-bit reference, val unchanged
+ELF_RELOC(R_P2_HUB_PCREL20,        17)  // hub code: PC-relative branch, 20-bit byte offset; supersedes R_P2_PC20
+ELF_RELOC(R_P2_HUB_PCAUG32,        18)  // hub code: AUGS+JMP/CALL, 23+9=32-bit effective address; supersedes R_P2_AUG20
+ELF_RELOC(R_P2_COG_PCAUG32,        19)  // cog code: AUGS+JMP, 23+9=32-bit; no-attribute symbol placed in Cog RAM by linker script
+ELF_RELOC(R_P2_LUT_PCAUG32,        20)  // lut code: AUGS+JMP, 23+9=32-bit; no-attribute symbol placed in LUT RAM by linker script
+ELF_RELOC(R_P2_HUB_DATAAUG32,      21)  // hub data: AUGS+RDLONG/WRLONG address operand, 23+9=32-bit effective address

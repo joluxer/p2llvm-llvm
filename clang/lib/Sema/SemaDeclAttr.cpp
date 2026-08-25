@@ -8232,6 +8232,8 @@ static void handleCogtextAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
          << "'cogtext'" << ExpectedFunctionOrMethod;
       return;
    }
+   S.Diag(AL.getLoc(), diag::warn_deprecated_message)
+       << "'cogtext'" << "use 'lutram' instead";
    handleSimpleAttribute<CogtextAttr>(S, D, AL);
 }
 
@@ -8251,6 +8253,42 @@ static void handleCogcacheAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
       return;
    }
    handleSimpleAttribute<CogcacheAttr>(S, D, AL);
+}
+
+static void handleLutramAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
+   if (!isFunctionOrMethod(D) && !isa<VarDecl>(D)) {
+      S.Diag(D->getLocation(), diag::warn_attribute_wrong_decl_type)
+         << AL << ExpectedVariableOrFunction;
+      return;
+   }
+   handleSimpleAttribute<LutramAttr>(S, D, AL);
+}
+
+static void handleCogramAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
+   if (!isFunctionOrMethod(D) && !isa<VarDecl>(D)) {
+      S.Diag(D->getLocation(), diag::warn_attribute_wrong_decl_type)
+         << AL << ExpectedVariableOrFunction;
+      return;
+   }
+   handleSimpleAttribute<CogramAttr>(S, D, AL);
+}
+
+static void handleCoglocalAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
+   if (!isFunctionOrMethod(D)) {
+      S.Diag(D->getLocation(), diag::warn_attribute_wrong_decl_type)
+         << AL << ExpectedFunctionOrMethod;
+      return;
+   }
+   handleSimpleAttribute<CoglocalAttr>(S, D, AL);
+}
+
+static void handleCogpreferAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
+   if (!isFunctionOrMethod(D)) {
+      S.Diag(D->getLocation(), diag::warn_attribute_wrong_decl_type)
+         << AL << ExpectedFunctionOrMethod;
+      return;
+   }
+   handleSimpleAttribute<CogpreferAttr>(S, D, AL);
 }
 
 template <typename AttrTy>
@@ -9115,7 +9153,23 @@ ProcessDeclAttribute(Sema &S, Scope *scope, Decl *D, const ParsedAttr &AL,
   case ParsedAttr::AT_Cogcache:
     handleCogcacheAttr(S, D, AL);
     break;
-    
+
+  case ParsedAttr::AT_Lutram:
+    handleLutramAttr(S, D, AL);
+    break;
+
+  case ParsedAttr::AT_Cogram:
+    handleCogramAttr(S, D, AL);
+    break;
+
+  case ParsedAttr::AT_Coglocal:
+    handleCoglocalAttr(S, D, AL);
+    break;
+
+  case ParsedAttr::AT_Cogprefer:
+    handleCogpreferAttr(S, D, AL);
+    break;
+
   case ParsedAttr::AT_EnforceTCB:
     handleEnforceTCBAttr<EnforceTCBAttr, EnforceTCBLeafAttr>(S, D, AL);
     break;

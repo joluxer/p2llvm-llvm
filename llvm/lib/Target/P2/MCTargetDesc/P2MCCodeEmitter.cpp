@@ -91,7 +91,7 @@ unsigned P2MCCodeEmitter::getJumpTargetOpValue(const MCInst &MI, unsigned OpNo, 
 
     const MCExpr *Expr = MO.getExpr();
     LLVM_DEBUG(Expr->dump());
-    Fixups.push_back(MCFixup::create(0, Expr, MCFixupKind(P2::fixup_P2_PC20)));
+    Fixups.push_back(MCFixup::create(0, Expr, MCFixupKind(P2::fixup_P2_HUB_PCREL20)));
 
     return 0;
 }
@@ -111,7 +111,7 @@ unsigned P2MCCodeEmitter::getJumpAbsTargetOpValue(const MCInst &MI, unsigned OpN
 
     const MCExpr *Expr = MO.getExpr();
     LLVM_DEBUG(Expr->dump());
-    Fixups.push_back(MCFixup::create(0, Expr, MCFixupKind(P2::fixup_P2_20)));
+    Fixups.push_back(MCFixup::create(0, Expr, MCFixupKind(P2::fixup_P2_HUB_PC20)));
 
     return 0;
 }
@@ -132,7 +132,26 @@ unsigned P2MCCodeEmitter::getJump9TargetOpValue(const MCInst &MI, unsigned OpNo,
 
     const MCExpr *Expr = MO.getExpr();
     LLVM_DEBUG(Expr->dump());
-    Fixups.push_back(MCFixup::create(0, Expr, MCFixupKind(P2::fixup_P2_PCCOG9)));
+    Fixups.push_back(MCFixup::create(0, Expr, MCFixupKind(P2::fixup_P2_LUT_PCREL9)));
+    return 0;
+}
+
+unsigned P2MCCodeEmitter::getJump9CogTargetOpValue(const MCInst &MI, unsigned OpNo, SmallVectorImpl<MCFixup> &Fixups,
+                                                const MCSubtargetInfo &STI) const {
+    const MCOperand &MO = MI.getOperand(OpNo);
+
+    if (MO.isImm()) {
+        LLVM_DEBUG(errs() << "cog jump offset = " << MO.getImm() << "\n");
+        return MO.getImm();
+    }
+
+    assert(MO.isExpr() && "getJump9CogTargetOpValue expects only expressions if not an immediate");
+
+    LLVM_DEBUG(errs() << "--- creating fixup for 9-bit cog jump operand\n");
+
+    const MCExpr *Expr = MO.getExpr();
+    LLVM_DEBUG(Expr->dump());
+    Fixups.push_back(MCFixup::create(0, Expr, MCFixupKind(P2::fixup_P2_COG_PCREL9)));
     return 0;
 }
 
@@ -152,10 +171,10 @@ unsigned P2MCCodeEmitter::encodeCallTarget(const MCInst &MI, unsigned OpNo, Smal
         LLVM_DEBUG(expr->dump());
 
         if (is_rtlib(expr->getSymbol())) {
-            LLVM_DEBUG(errs() << "creating libcall (cog9) fixup fixup\n");
-            FixupKind = static_cast<MCFixupKind>(P2::fixup_P2_COG9);
+            LLVM_DEBUG(errs() << "creating libcall (lut_pc9) fixup\n");
+            FixupKind = static_cast<MCFixupKind>(P2::fixup_P2_LUT_PC9);
         } else {
-            FixupKind = static_cast<MCFixupKind>(P2::fixup_P2_PC20);
+            FixupKind = static_cast<MCFixupKind>(P2::fixup_P2_HUB_PCREL20);
         }
 
         Fixups.push_back(MCFixup::create(0, MO.getExpr(), FixupKind, MI.getLoc()));
@@ -184,10 +203,10 @@ unsigned P2MCCodeEmitter::encodeAbsCallTarget(const MCInst &MI, unsigned OpNo, S
         LLVM_DEBUG(expr->dump());
 
         if (is_rtlib(expr->getSymbol())) {
-            LLVM_DEBUG(errs() << "creating libcall (cog9) fixup fixup\n");
-            FixupKind = static_cast<MCFixupKind>(P2::fixup_P2_COG9);
+            LLVM_DEBUG(errs() << "creating libcall (lut_pc9) fixup\n");
+            FixupKind = static_cast<MCFixupKind>(P2::fixup_P2_LUT_PC9);
         } else {
-            FixupKind = static_cast<MCFixupKind>(P2::fixup_P2_20);
+            FixupKind = static_cast<MCFixupKind>(P2::fixup_P2_HUB_PC20);
         }
 
         Fixups.push_back(MCFixup::create(0, MO.getExpr(), FixupKind, MI.getLoc()));
@@ -223,7 +242,7 @@ unsigned P2MCCodeEmitter::getExprOpValue(const MCInst &MI, const MCExpr *Expr, S
         LLVM_DEBUG(errs() << " --- expression is symbol ref\n");
         LLVM_DEBUG(MI.dump());
         LLVM_DEBUG(Expr->dump());
-        MCFixupKind FixupKind = static_cast<MCFixupKind>(P2::fixup_P2_AUG20);
+        MCFixupKind FixupKind = static_cast<MCFixupKind>(P2::fixup_P2_HUB_PCAUG32);
         Fixups.push_back(MCFixup::create(0, Expr, FixupKind));
         return 0;
     }

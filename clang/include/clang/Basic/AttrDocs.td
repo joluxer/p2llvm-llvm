@@ -6332,7 +6332,49 @@ def CogcacheDocs : Documentation {
   Clang for P2 supports ``__attribute__((cogcache))`` attribute to mark that a function
   should be cached in the cog for execution. Caching is only useful when we repeatedly call
   small and shallow functions to see the performance boost, or for functions that require
-  the use of the FIFO streamer and must run from the cog. 
+  the use of the FIFO streamer and must run from the cog.
+  }];
+}
+
+def LutramDocs : Documentation {
+  let Category = DocCatFunction;
+  let Heading = "Lutram";
+  let Content = [{
+  Clang for P2 supports ``__attribute__((lutram))`` to place a function or global
+  variable into LUT RAM.  Functions are addressed via ``R_P2_LUT_PC20``; global
+  variables are accessed with RDLUT/WRLUT instructions.
+  }];
+}
+
+def CogramDocs : Documentation {
+  let Category = DocCatFunction;
+  let Heading = "Cogram";
+  let Content = [{
+  Clang for P2 supports ``__attribute__((cogram))`` to place a function or global
+  variable into Cog RAM.  Functions are addressed via ``R_P2_COG_PC20``; global
+  variables are accessed via ALU source/destination fields.
+  }];
+}
+
+def CoglocalDocs : Documentation {
+  let Category = DocCatFunction;
+  let Heading = "Coglocal";
+  let Content = [{
+  Clang for P2 supports ``__attribute__((coglocal))`` on functions to request
+  placement in the LUT fill region reserved for Cog-local execution.  This
+  attribute is not applicable to data objects; use ``lutram`` or ``cogram``
+  for data placement.
+  }];
+}
+
+def CogpreferDocs : Documentation {
+  let Category = DocCatFunction;
+  let Heading = "Cogprefer";
+  let Content = [{
+  Clang for P2 supports ``__attribute__((cogprefer))`` on functions to prefer
+  Cog-mode execution, falling back through LUT to Hub if Cog RAM is exhausted.
+  This attribute is not applicable to data objects; use ``lutram`` or ``cogram``
+  for data placement.
   }];
 }
 

@@ -102,6 +102,7 @@ set(webassembly_files
   )
 
 set(p2_files
+  bits/p2_address_spaces.h
   bits/p2_atomic_types.h
   bits/p2_register_base.h
   )

@@ -64,11 +64,15 @@ namespace llvm {
         unsigned getJumpTargetOpValue(const MCInst &MI, unsigned OpNo, SmallVectorImpl<MCFixup> &Fixups, const MCSubtargetInfo &STI) const;
         unsigned getJumpAbsTargetOpValue(const MCInst &MI, unsigned OpNo, SmallVectorImpl<MCFixup> &Fixups, const MCSubtargetInfo &STI) const;
 
-        // Return binary encoding of the jump target
-        // target operand for instruction based jumps, such as djnz r0, #function_addr.
-        // If the machine operand requires relocation,
-        // record the relocation and return zero.
+        // Return binary encoding of the jump target operand for LUT-mode short
+        // branches (DJNZ etc.). Step 5 will rename this to getJump9LutTargetOpValue
+        // and bind it to the LUT-mode DJNZ opcode variant in the .td file.
         unsigned getJump9TargetOpValue(const MCInst &MI, unsigned OpNo, SmallVectorImpl<MCFixup> &Fixups, const MCSubtargetInfo &STI) const;
+
+        // Return binary encoding of the jump target operand for Cog-mode short
+        // branches (DJNZ etc.). Step 5 will bind this to the cogram DJNZ opcode
+        // variant in the .td file.
+        unsigned getJump9CogTargetOpValue(const MCInst &MI, unsigned OpNo, SmallVectorImpl<MCFixup> &Fixups, const MCSubtargetInfo &STI) const;
 
         // Return binary encoding of the call
         // target operand, such as call #function_addr.

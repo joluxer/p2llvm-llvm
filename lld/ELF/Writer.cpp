@@ -28,6 +28,7 @@
 #include "llvm/Support/BLAKE3.h"
 #include "llvm/Support/Parallel.h"
 #include "llvm/Support/RandomNumberGenerator.h"
+#include "llvm/Support/P2AddressSpaces.h"
 #include "llvm/Support/TimeProfiler.h"
 #include "llvm/Support/xxhash.h"
 #include <climits>
@@ -209,6 +210,24 @@ void elf::addReservedSymbols() {
     addOptionalRegular("_SDA_BASE_", nullptr, 0, STV_HIDDEN);
   } else if (config->emachine == EM_PPC64) {
     addPPC64SaveRestore();
+  } else if (config->emachine == EM_P2) {
+    // Inject P2 address space boundary constants as ABI-defined absolute
+    // symbols. Values are defined in llvm/include/llvm/Support/P2AddressSpaces.h
+    // (single source of truth). User code accesses them via extern declarations
+    // in clang/lib/Headers/bits/p2_address_spaces.h.
+    // STV_DEFAULT: symbols are globally visible in the linked binary.
+    auto addP2Abs = [](StringRef name, uint64_t val) {
+      Symbol *sym = symtab->addSymbol(Defined{nullptr, name, STB_GLOBAL,
+                                              STV_DEFAULT, STT_NOTYPE,
+                                              val, 0, nullptr});
+      sym->isUsedInRegularObj = true;
+    };
+    addP2Abs("__p2_cog_pc_min",  P2CogPcMin);
+    addP2Abs("__p2_cog_pc_max",  P2CogPcMax);
+    addP2Abs("__p2_cog_abi_max", P2CogAbiMax);
+    addP2Abs("__p2_lut_pc_base", P2LutPcBase);
+    addP2Abs("__p2_lut_pc_max",  P2LutPcMax);
+    addP2Abs("__p2_hub_pc_base", P2HubPcBase);
   }
 
   // The Power Architecture 64-bit v2 ABI defines a TableOfContents (TOC) which

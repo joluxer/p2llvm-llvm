@@ -66,6 +66,48 @@ unsigned P2ELFObjectWriter::getRelocType(MCContext &Ctx, const MCValue &Target, 
     case P2::fixup_P2_PCCOG9:
         Type = ELF::R_P2_PCCOG9;
         break;
+    case P2::fixup_P2_COG_PC20:
+        Type = ELF::R_P2_COG_PC20;
+        break;
+    case P2::fixup_P2_COG_PC9:
+        Type = ELF::R_P2_COG_PC9;
+        break;
+    case P2::fixup_P2_COG_DATA9:
+        Type = ELF::R_P2_COG_DATA9;
+        break;
+    case P2::fixup_P2_COG_PCREL9:
+        Type = ELF::R_P2_COG_PCREL9;
+        break;
+    case P2::fixup_P2_LUT_PC20:
+        Type = ELF::R_P2_LUT_PC20;
+        break;
+    case P2::fixup_P2_LUT_PC9:
+        Type = ELF::R_P2_LUT_PC9;
+        break;
+    case P2::fixup_P2_LUT_DATA9:
+        Type = ELF::R_P2_LUT_DATA9;
+        break;
+    case P2::fixup_P2_LUT_PCREL9:
+        Type = ELF::R_P2_LUT_PCREL9;
+        break;
+    case P2::fixup_P2_HUB_PC20:
+        Type = ELF::R_P2_HUB_PC20;
+        break;
+    case P2::fixup_P2_HUB_PCREL20:
+        Type = ELF::R_P2_HUB_PCREL20;
+        break;
+    case P2::fixup_P2_HUB_PCAUG32:
+        Type = ELF::R_P2_HUB_PCAUG32;
+        break;
+    case P2::fixup_P2_COG_PCAUG32:
+        Type = ELF::R_P2_COG_PCAUG32;
+        break;
+    case P2::fixup_P2_LUT_PCAUG32:
+        Type = ELF::R_P2_LUT_PCAUG32;
+        break;
+    case P2::fixup_P2_HUB_DATAAUG32:
+        Type = ELF::R_P2_HUB_DATAAUG32;
+        break;
     }
 
     return Type;
