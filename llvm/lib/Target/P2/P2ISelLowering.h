@@ -33,14 +33,21 @@ namespace llvm {
             // Return from subroutine.
             RET,
 
-            // call subroutine
+            // call subroutine in Hub RAM
             CALL,
+            // call subroutine in LUT RAM (emits R_P2_LUT_PC20 relocation)
+            CALL_LUT,
+            // call subroutine in Cog RAM (emits R_P2_COG_PC20 relocation)
+            CALL_COG,
 
             // tail call — lowers to JMP instead of CALLA; does not push PTRA.
             // Operands: (Chain, Callee, args..., regmask)
             // The node is a terminator; the caller's PTRA entry is consumed
             // directly by the callee.
             TAIL_CALL,
+            // tail call variants for LUT/Cog callees (same semantics, different relocation)
+            TAIL_CALL_LUT,
+            TAIL_CALL_COG,
 
             // global address wrapper
             GAWRAPPER

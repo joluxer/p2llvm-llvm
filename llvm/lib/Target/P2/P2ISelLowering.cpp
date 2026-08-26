@@ -54,10 +54,14 @@ static unsigned addLiveIn(MachineFunction &MF, unsigned PReg, const TargetRegist
 const char *P2TargetLowering::getTargetNodeName(unsigned Opcode) const {
 
     switch (Opcode) {
-        case P2ISD::RET:       return "P2RET";
-        case P2ISD::CALL:      return "P2CALL";
-        case P2ISD::TAIL_CALL: return "P2TAIL_CALL";
-        case P2ISD::GAWRAPPER: return "P2GAWRAPPER";
+        case P2ISD::RET:            return "P2RET";
+        case P2ISD::CALL:           return "P2CALL";
+        case P2ISD::CALL_LUT:       return "P2CALL_LUT";
+        case P2ISD::CALL_COG:       return "P2CALL_COG";
+        case P2ISD::TAIL_CALL:      return "P2TAIL_CALL";
+        case P2ISD::TAIL_CALL_LUT:  return "P2TAIL_CALL_LUT";
+        case P2ISD::TAIL_CALL_COG:  return "P2TAIL_CALL_COG";
+        case P2ISD::GAWRAPPER:      return "P2GAWRAPPER";
         default:
             return nullptr;
     }
