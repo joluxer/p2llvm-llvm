@@ -197,48 +197,66 @@ unsigned P2MCCodeEmitter::encodeAbsCallTarget(const MCInst &MI, unsigned OpNo, S
     if (MO.isExpr()) {
         LLVM_DEBUG(errs() << "call target for operand is an expression of kind: ");
         LLVM_DEBUG(errs() << (unsigned)MO.getExpr()->getKind() << "\n");
-        MCFixupKind FixupKind;
-        const MCSymbolRefExpr* expr = static_cast<const MCSymbolRefExpr*>(MO.getExpr());
-
-        LLVM_DEBUG(expr->dump());
-
-        if (is_rtlib(expr->getSymbol())) {
-            LLVM_DEBUG(errs() << "creating libcall (lut_pc9) fixup\n");
-            FixupKind = static_cast<MCFixupKind>(P2::fixup_P2_LUT_PC9);
-        } else {
-            FixupKind = static_cast<MCFixupKind>(P2::fixup_P2_HUB_PC20);
-        }
-
-        Fixups.push_back(MCFixup::create(0, MO.getExpr(), FixupKind, MI.getLoc()));
+        Fixups.push_back(MCFixup::create(0, MO.getExpr(),
+            MCFixupKind(P2::fixup_P2_HUB_PC20), MI.getLoc()));
         return 0;
     }
 
-    assert(MO.isImm() && "non-immediate expression not handled by encodeCallTarget");
+    assert(MO.isImm() && "non-immediate expression not handled by encodeAbsCallTarget");
 
-    auto Target = MO.getImm();
-    return Target;
+    return MO.getImm();
 }
 
-// Stubs: forward to encodeAbsCallTarget until A7 adds correct fixup types.
 unsigned P2MCCodeEmitter::encodeAbsCallTargetLUT(const MCInst &MI, unsigned OpNo, SmallVectorImpl<MCFixup> &Fixups,
                                                  const MCSubtargetInfo &STI) const {
-    return encodeAbsCallTarget(MI, OpNo, Fixups, STI);
+    const MCOperand &MO = MI.getOperand(OpNo);
+    if (MO.isImm())
+        return MO.getImm();
+    assert(MO.isExpr() && "encodeAbsCallTargetLUT expects only expressions if not an immediate");
+    Fixups.push_back(MCFixup::create(0, MO.getExpr(),
+        MCFixupKind(P2::fixup_P2_LUT_PC20), MI.getLoc()));
+    return 0;
 }
 
 unsigned P2MCCodeEmitter::encodeAbsCallTargetCOG(const MCInst &MI, unsigned OpNo, SmallVectorImpl<MCFixup> &Fixups,
                                                  const MCSubtargetInfo &STI) const {
-    return encodeAbsCallTarget(MI, OpNo, Fixups, STI);
+    const MCOperand &MO = MI.getOperand(OpNo);
+    if (MO.isImm())
+        return MO.getImm();
+    assert(MO.isExpr() && "encodeAbsCallTargetCOG expects only expressions if not an immediate");
+    Fixups.push_back(MCFixup::create(0, MO.getExpr(),
+        MCFixupKind(P2::fixup_P2_COG_PC20), MI.getLoc()));
+    return 0;
 }
 
-// Stubs: forward to getJumpAbsTargetOpValue until A7 adds correct fixup types.
 unsigned P2MCCodeEmitter::getJumpAbsLutTargetOpValue(const MCInst &MI, unsigned OpNo, SmallVectorImpl<MCFixup> &Fixups,
                                                      const MCSubtargetInfo &STI) const {
-    return getJumpAbsTargetOpValue(MI, OpNo, Fixups, STI);
+    const MCOperand &MO = MI.getOperand(OpNo);
+    if (MO.isImm()) {
+        LLVM_DEBUG(errs() << "lut jump target = " << MO.getImm() << "\n");
+        return MO.getImm();
+    }
+    assert(MO.isExpr() && "getJumpAbsLutTargetOpValue expects only expressions if not an immediate");
+    LLVM_DEBUG(errs() << "--- creating absolute LUT fixup for jump operand\n");
+    const MCExpr *Expr = MO.getExpr();
+    LLVM_DEBUG(Expr->dump());
+    Fixups.push_back(MCFixup::create(0, Expr, MCFixupKind(P2::fixup_P2_LUT_PC20)));
+    return 0;
 }
 
 unsigned P2MCCodeEmitter::getJumpAbsCogTargetOpValue(const MCInst &MI, unsigned OpNo, SmallVectorImpl<MCFixup> &Fixups,
                                                      const MCSubtargetInfo &STI) const {
-    return getJumpAbsTargetOpValue(MI, OpNo, Fixups, STI);
+    const MCOperand &MO = MI.getOperand(OpNo);
+    if (MO.isImm()) {
+        LLVM_DEBUG(errs() << "cog jump target = " << MO.getImm() << "\n");
+        return MO.getImm();
+    }
+    assert(MO.isExpr() && "getJumpAbsCogTargetOpValue expects only expressions if not an immediate");
+    LLVM_DEBUG(errs() << "--- creating absolute COG fixup for jump operand\n");
+    const MCExpr *Expr = MO.getExpr();
+    LLVM_DEBUG(Expr->dump());
+    Fixups.push_back(MCFixup::create(0, Expr, MCFixupKind(P2::fixup_P2_COG_PC20)));
+    return 0;
 }
 
 unsigned P2MCCodeEmitter::getExprOpValue(const MCInst &MI, const MCExpr *Expr, SmallVectorImpl<MCFixup> &Fixups,
