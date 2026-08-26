@@ -30,6 +30,7 @@
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/IRBuilder.h"
+#include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
@@ -617,17 +618,32 @@ SDValue P2TargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
     // direct call is) turn it into a TargetGlobalAddress/TargetExternalSymbol
     // node so that legalize doesn't hack it.
     bool GlobalOrExternal = false, InternalLinkage = false;
+    bool IsLUT = false, IsCog = false;
 
     if (GlobalAddressSDNode *G = dyn_cast<GlobalAddressSDNode>(Callee)) {
+        if (const Function *F = dyn_cast<Function>(G->getGlobal())) {
+            IsLUT = F->hasFnAttribute("lutram") ||
+                    F->hasFnAttribute("coglocal") ||
+                    F->hasFnAttribute("cogprefer");
+            IsCog = F->hasFnAttribute("cogram");
+        }
         Callee = DAG.getTargetGlobalAddress(G->getGlobal(), DL, getPointerTy(DAG.getDataLayout()), 0);
         GlobalOrExternal = true;
-        LLVM_DEBUG(errs() << "Callee is a global address\n");
-    }  else if (ExternalSymbolSDNode *S = dyn_cast<ExternalSymbolSDNode>(Callee)) {
+        LLVM_DEBUG(errs() << "Callee is a global address"
+                          << (IsLUT ? " [LUT]" : IsCog ? " [Cog]" : " [Hub]") << "\n");
+    } else if (ExternalSymbolSDNode *S = dyn_cast<ExternalSymbolSDNode>(Callee)) {
         const char *Sym = S->getSymbol();
-
+        // Identify libcalls via TargetLibraryInfo. Libcalls currently route to
+        // Hub RAM like any other external symbol without placement attributes;
+        // A10 (-mrt-placement) will add explicit placement control.
+        const TargetLibraryInfo &LibInfo = DAG.getLibInfo();
+        LibFunc LF;
+        if (LibInfo.getLibFunc(StringRef(Sym), LF)) {
+            LLVM_DEBUG(errs() << "Callee is a libcall [Hub]: " << Sym << "\n");
+        } else {
+            LLVM_DEBUG(errs() << "Callee is an external symbol [Hub]: " << Sym << "\n");
+        }
         Callee = DAG.getTargetExternalSymbol(Sym, getPointerTy(DAG.getDataLayout()));
-
-        LLVM_DEBUG(errs() << "Callee is an external symbol\n");
         GlobalOrExternal = true;
     }
 
@@ -643,15 +659,20 @@ SDValue P2TargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
         // not modified.  The callee's RETA will consume the caller's PTRA entry
         // directly, returning to the caller's caller.
         // No CALLSEQ_END is emitted: there is no matching CALLSEQ_START.
-        Chain = DAG.getNode(P2ISD::TAIL_CALL, DL, MVT::Other, Ops);
+        P2ISD::NodeType TailOpc = IsLUT ? P2ISD::TAIL_CALL_LUT :
+                                   IsCog ? P2ISD::TAIL_CALL_COG :
+                                           P2ISD::TAIL_CALL;
+        Chain = DAG.getNode(TailOpc, DL, MVT::Other, Ops);
         return Chain;
     }
 
     // Normal (non-tail) call path.
     SDVTList NodeTys = DAG.getVTList(MVT::Other, MVT::Glue);
 
-    // call the function
-    Chain = DAG.getNode(P2ISD::CALL, DL, NodeTys, Ops);
+    P2ISD::NodeType CallOpc = IsLUT ? P2ISD::CALL_LUT :
+                               IsCog ? P2ISD::CALL_COG :
+                                       P2ISD::CALL;
+    Chain = DAG.getNode(CallOpc, DL, NodeTys, Ops);
     SDValue InFlag = Chain.getValue(1);
 
     // end the call sequence
