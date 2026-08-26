@@ -116,8 +116,8 @@ unsigned P2MCCodeEmitter::getJumpAbsTargetOpValue(const MCInst &MI, unsigned OpN
     return 0;
 }
 
-unsigned P2MCCodeEmitter::getJump9TargetOpValue(const MCInst &MI, unsigned OpNo, SmallVectorImpl<MCFixup> &Fixups,
-                                                const MCSubtargetInfo &STI) const {
+unsigned P2MCCodeEmitter::getJump9LutTargetOpValue(const MCInst &MI, unsigned OpNo, SmallVectorImpl<MCFixup> &Fixups,
+                                                   const MCSubtargetInfo &STI) const {
     const MCOperand &MO = MI.getOperand(OpNo);
     // If the destination is an immediate, we have nothing to do.
 
@@ -126,7 +126,7 @@ unsigned P2MCCodeEmitter::getJump9TargetOpValue(const MCInst &MI, unsigned OpNo,
         return MO.getImm();
     }
 
-    assert(MO.isExpr() && "getJump9TargetOpValue expects only expressions if not an immediate");
+    assert(MO.isExpr() && "getJump9LutTargetOpValue expects only expressions if not an immediate");
 
     LLVM_DEBUG(errs() << "--- creating fixup for 9-bit jump operand\n");
 

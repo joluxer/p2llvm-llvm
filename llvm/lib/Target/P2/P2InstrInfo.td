@@ -43,7 +43,7 @@ def reljmptarget    : Operand<OtherVT> {
 }
 
 def jmp9target    : Operand<OtherVT> {
-    let EncoderMethod = "getJump9TargetOpValue";
+    let EncoderMethod = "getJump9LutTargetOpValue";
     let DecoderMethod = "decodeJump9Target";
     let OperandType = "OPERAND_IMMEDIATE";
 }
