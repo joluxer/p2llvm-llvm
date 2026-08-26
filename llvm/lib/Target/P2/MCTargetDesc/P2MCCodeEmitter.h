@@ -79,6 +79,12 @@ namespace llvm {
         // record the relocation and return zero.
         unsigned encodeCallTarget(const MCInst &MI, unsigned OpNo, SmallVectorImpl<MCFixup> &Fixups, const MCSubtargetInfo &STI) const;
         unsigned encodeAbsCallTarget(const MCInst &MI, unsigned OpNo, SmallVectorImpl<MCFixup> &Fixups, const MCSubtargetInfo &STI) const;
+        // LUT/Cog call target stubs — real fixup types added in A7.
+        unsigned encodeAbsCallTargetLUT(const MCInst &MI, unsigned OpNo, SmallVectorImpl<MCFixup> &Fixups, const MCSubtargetInfo &STI) const;
+        unsigned encodeAbsCallTargetCOG(const MCInst &MI, unsigned OpNo, SmallVectorImpl<MCFixup> &Fixups, const MCSubtargetInfo &STI) const;
+        // LUT/Cog absolute jump target stubs — real fixup types added in A7.
+        unsigned getJumpAbsLutTargetOpValue(const MCInst &MI, unsigned OpNo, SmallVectorImpl<MCFixup> &Fixups, const MCSubtargetInfo &STI) const;
+        unsigned getJumpAbsCogTargetOpValue(const MCInst &MI, unsigned OpNo, SmallVectorImpl<MCFixup> &Fixups, const MCSubtargetInfo &STI) const;
 
         // Return binary encoding of the condition operand
         // unsigned encodeCondition(const MCInst &MI, unsigned OpNo, SmallVectorImpl<MCFixup> &Fixups, const MCSubtargetInfo &STI) const;

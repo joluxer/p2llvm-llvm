@@ -132,7 +132,8 @@ void P2FrameLowering::determineCalleeSaves(MachineFunction &MF, BitVector &Saved
         auto termIt = mbb.getFirstTerminator();
         if (termIt == mbb.end()) continue;
         unsigned opc = termIt->getOpcode();
-        if (termIt->isReturn() && opc != P2::TCALL_a && opc != P2::TCALL_r) {
+        if (termIt->isReturn() && opc != P2::TCALL_a && opc != P2::TCALL_a_LUT &&
+                                  opc != P2::TCALL_a_COG && opc != P2::TCALL_r) {
             return; // non-tail-call return found — conservative fallback
         }
     }
@@ -264,7 +265,8 @@ bool P2FrameLowering::restoreCalleeSavedRegisters(MachineBasicBlock &MBB, Machin
     auto termIt = MBB.getFirstTerminator();
     if (termIt != MBB.end()) {
         unsigned opc = termIt->getOpcode();
-        if (opc == P2::TCALL_a || opc == P2::TCALL_r) {
+        if (opc == P2::TCALL_a || opc == P2::TCALL_a_LUT ||
+            opc == P2::TCALL_a_COG || opc == P2::TCALL_r) {
             LLVM_DEBUG(errs() << "--- tail call block, collecting live argument registers\n");
             for (const MachineOperand &MO : termIt->operands()) {
                 if (MO.isReg() && MO.getReg().isValid() && MO.isUse()) {

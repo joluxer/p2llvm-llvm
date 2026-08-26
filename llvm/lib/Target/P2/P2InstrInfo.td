@@ -36,6 +36,18 @@ def absjmptarget    : Operand<OtherVT> {
     let ParserMatchClass = P2AbsAddrOperand;
 }
 
+def absjmptarget_lut : Operand<OtherVT> {
+    let EncoderMethod = "getJumpAbsLutTargetOpValue";
+    let OperandType = "OPERAND_IMMEDIATE";
+    let ParserMatchClass = P2AbsAddrOperand;
+}
+
+def absjmptarget_cog : Operand<OtherVT> {
+    let EncoderMethod = "getJumpAbsCogTargetOpValue";
+    let OperandType = "OPERAND_IMMEDIATE";
+    let ParserMatchClass = P2AbsAddrOperand;
+}
+
 def reljmptarget    : Operand<OtherVT> {
     let EncoderMethod = "getJumpTargetOpValue";
     let OperandType = "OPERAND_IMMEDIATE";
@@ -50,6 +62,16 @@ def jmp9target    : Operand<OtherVT> {
 
 def abscalltarget : Operand<iPTR> {
     let EncoderMethod = "encodeAbsCallTarget";
+    let ParserMatchClass = P2AbsAddrOperand;
+}
+
+def abscalltarget_lut : Operand<iPTR> {
+    let EncoderMethod = "encodeAbsCallTargetLUT";
+    let ParserMatchClass = P2AbsAddrOperand;
+}
+
+def abscalltarget_cog : Operand<iPTR> {
+    let EncoderMethod = "encodeAbsCallTargetCOG";
     let ParserMatchClass = P2AbsAddrOperand;
 }
 
@@ -79,10 +101,14 @@ def P2WRLUT  : SDNode<"P2ISD::WRLUT", SDTStore, [SDNPHasChain, SDNPMayStore, SDN
 
 def P2RET      : SDNode<"P2ISD::RET",       SDTNone,    [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
 def P2CALL     : SDNode<"P2ISD::CALL",      SDT_P2Call, [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
+def P2CALL_LUT : SDNode<"P2ISD::CALL_LUT",  SDT_P2Call, [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
+def P2CALL_COG : SDNode<"P2ISD::CALL_COG",  SDT_P2Call, [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
 // Tail call: same type profile as CALL but produces no glue — nothing follows
 // the jump. PTRA is not modified; the callee's RETA consumes the caller's
 // return address directly.
-def P2TAILCALL : SDNode<"P2ISD::TAIL_CALL", SDT_P2Call, [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
+def P2TAILCALL     : SDNode<"P2ISD::TAIL_CALL",     SDT_P2Call, [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
+def P2TAILCALL_LUT : SDNode<"P2ISD::TAIL_CALL_LUT", SDT_P2Call, [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
+def P2TAILCALL_COG : SDNode<"P2ISD::TAIL_CALL_COG", SDT_P2Call, [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
 
 def rdlut : PatFrag<(ops node:$ptr), (P2RDLUT node:$ptr)> {
     let IsNonExtLoad = 1;
@@ -314,8 +340,10 @@ let DecoderMethod = "DecodeCmpInstruction", s_num = 2, d_num = 1 in {
 def JMPr        : P2InstCZD<0b1101011, 0b000101100, (outs), (ins P2GPR:$d), "jmp $d">;
 
 let DecoderMethod = "DecodeJumpInstruction", isBarrier = 1, isBranch = 1, isTerminator = 1 in {
-    def JMP     : P2InstRA<0b1101100, 0b1, (outs), (ins reljmptarget:$d, P2Implicit:$cmp), "jmp $d">; // relative address jump
-    def JMPa    : P2InstRA<0b1101100, 0b0, (outs), (ins absjmptarget:$d, P2Implicit:$cmp), "jmp $d">; // absolute address jump.
+    def JMP        : P2InstRA<0b1101100, 0b1, (outs), (ins reljmptarget:$d, P2Implicit:$cmp), "jmp $d">;
+    def JMPa       : P2InstRA<0b1101100, 0b0, (outs), (ins absjmptarget:$d, P2Implicit:$cmp), "jmp $d">;
+    def JMPa_LUT   : P2InstRA<0b1101100, 0b0, (outs), (ins absjmptarget_lut:$d, P2Implicit:$cmp), "jmp $d">;
+    def JMPa_COG   : P2InstRA<0b1101100, 0b0, (outs), (ins absjmptarget_cog:$d, P2Implicit:$cmp), "jmp $d">;
 }
 
 let DecoderMethod = "DecodeTJInstruction", isBranch = 1, isBarrier = 1, isTerminator = 1 in {
@@ -565,11 +593,13 @@ let isTerminator = 1, isReturn = 1, isBarrier = 1 in {
 }
 
 let isCall = 1, Uses = [PTRA], DecoderMethod = "DecodeCallInstruction" in {
-    def CALL    : P2InstRA<0b1101101, 0b1, (outs), (ins relcalltarget:$a), "call $a">; // use this for relative function calls in cog mode.
-    def CALLa   : P2InstRA<0b1101101, 0b0, (outs), (ins abscalltarget:$a), "call $a">; // use this for absolute function calls in cog mode.
-    def CALLAa   : P2InstRA<0b1101110, 0b0, (outs), (ins abscalltarget:$a), "calla $a">; // mainly use this for direct function calls
-    def CALLr    : P2InstCZD<0b1101011, 0b000101101, (outs), (ins P2GPR:$d), "call $d">;
-    def CALLAr   : P2InstCZD<0b1101011, 0b000101110, (outs), (ins P2GPR:$d), "calla $d">; // mainly use this for function calls with register input
+    def CALL       : P2InstRA<0b1101101, 0b1, (outs), (ins relcalltarget:$a), "call $a">;
+    def CALLa      : P2InstRA<0b1101101, 0b0, (outs), (ins abscalltarget:$a), "call $a">;
+    def CALLAa     : P2InstRA<0b1101110, 0b0, (outs), (ins abscalltarget:$a), "calla $a">;
+    def CALLAa_LUT : P2InstRA<0b1101110, 0b0, (outs), (ins abscalltarget_lut:$a), "calla $a">;
+    def CALLAa_COG : P2InstRA<0b1101110, 0b0, (outs), (ins abscalltarget_cog:$a), "calla $a">;
+    def CALLr      : P2InstCZD<0b1101011, 0b000101101, (outs), (ins P2GPR:$d), "call $d">;
+    def CALLAr     : P2InstCZD<0b1101011, 0b000101110, (outs), (ins P2GPR:$d), "calla $d">;
 }
 
 // Tail-call pseudos.  Expanded to JMPa / JMPr by P2ExpandPseudos.
@@ -587,10 +617,10 @@ let isCall = 1, Uses = [PTRA], DecoderMethod = "DecodeCallInstruction" in {
 // is neither read nor written by these pseudos.
 let isCall = 1, isTerminator = 1, isReturn = 1, isBarrier = 1,
     isCodeGenOnly = 1 in {
-    def TCALL_a : Pseudo<(outs), (ins abscalltarget:$dst),
-                         "# TCALL_a $dst">;
-    def TCALL_r : Pseudo<(outs), (ins P2GPR:$dst),
-                         "# TCALL_r $dst">;
+    def TCALL_a     : Pseudo<(outs), (ins abscalltarget:$dst),     "# TCALL_a $dst">;
+    def TCALL_a_LUT : Pseudo<(outs), (ins abscalltarget_lut:$dst), "# TCALL_a_LUT $dst">;
+    def TCALL_a_COG : Pseudo<(outs), (ins abscalltarget_cog:$dst), "# TCALL_a_COG $dst">;
+    def TCALL_r     : Pseudo<(outs), (ins P2GPR:$dst),             "# TCALL_r $dst">;
 }
 
 let Defs = [PTRA], Uses = [PTRA] in {
@@ -605,17 +635,25 @@ def : Pat<(P2callseq_end timm:$amt1, timm:$amt2), (ADJCALLSTACKDOWN i32imm:$amt1
 def : Pat<(P2GAWrapper tglobaladdr:$addr), (MOVri tglobaladdr:$addr, always, noeff)>;
 def : Pat<(P2GAWrapper tjumptable:$addr), (MOVri tjumptable:$addr, always, noeff)>;
 
-def : Pat<(P2CALL (i32 tglobaladdr:$dst)), (CALLAa tglobaladdr:$dst, always)>;
-def : Pat<(P2CALL (i32 texternalsym:$dst)), (CALLAa texternalsym:$dst, always)>;
-def : Pat<(P2CALL (i32 P2GPR:$d)), (CALLAr P2GPR:$d, always, noeff)>;
+def : Pat<(P2CALL     (i32 tglobaladdr:$dst)),  (CALLAa     tglobaladdr:$dst, always)>;
+def : Pat<(P2CALL     (i32 texternalsym:$dst)), (CALLAa     texternalsym:$dst, always)>;
+def : Pat<(P2CALL     (i32 P2GPR:$d)),          (CALLAr     P2GPR:$d, always, noeff)>;
+def : Pat<(P2CALL_LUT (i32 tglobaladdr:$dst)),  (CALLAa_LUT tglobaladdr:$dst, always)>;
+def : Pat<(P2CALL_LUT (i32 texternalsym:$dst)), (CALLAa_LUT texternalsym:$dst, always)>;
+def : Pat<(P2CALL_COG (i32 tglobaladdr:$dst)),  (CALLAa_COG tglobaladdr:$dst, always)>;
+def : Pat<(P2CALL_COG (i32 texternalsym:$dst)), (CALLAa_COG texternalsym:$dst, always)>;
 
-// Tail-call selection: P2ISD::TAIL_CALL → TCALL pseudo.
+// Tail-call selection: P2ISD::TAIL_CALL* → TCALL pseudo.
 // The pattern matches only the callee operand; the variadic register copies,
 // regmask, and optional input glue are transparent to the TableGen matcher.
-// P2ExpandPseudos later replaces TCALL_a/TCALL_r with JMPa/JMPr.
-def : Pat<(P2TAILCALL (i32 tglobaladdr:$dst)),  (TCALL_a tglobaladdr:$dst)>;
-def : Pat<(P2TAILCALL (i32 texternalsym:$dst)), (TCALL_a texternalsym:$dst)>;
-def : Pat<(P2TAILCALL (i32 P2GPR:$d)),          (TCALL_r P2GPR:$d)>;
+// P2ExpandPseudos later replaces TCALL_a*/TCALL_r with JMPa*/JMPr.
+def : Pat<(P2TAILCALL     (i32 tglobaladdr:$dst)),  (TCALL_a     tglobaladdr:$dst)>;
+def : Pat<(P2TAILCALL     (i32 texternalsym:$dst)), (TCALL_a     texternalsym:$dst)>;
+def : Pat<(P2TAILCALL     (i32 P2GPR:$d)),          (TCALL_r     P2GPR:$d)>;
+def : Pat<(P2TAILCALL_LUT (i32 tglobaladdr:$dst)),  (TCALL_a_LUT tglobaladdr:$dst)>;
+def : Pat<(P2TAILCALL_LUT (i32 texternalsym:$dst)), (TCALL_a_LUT texternalsym:$dst)>;
+def : Pat<(P2TAILCALL_COG (i32 tglobaladdr:$dst)),  (TCALL_a_COG tglobaladdr:$dst)>;
+def : Pat<(P2TAILCALL_COG (i32 texternalsym:$dst)), (TCALL_a_COG texternalsym:$dst)>;
 
 /*--------------------------------*/
 /* I/O and hardware control       */

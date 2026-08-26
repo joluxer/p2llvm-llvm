@@ -188,6 +188,28 @@ bool P2ExpandTailCalls::runOnMachineFunction(MachineFunction &MF) {
                     changed = true;
                     break;
 
+                case P2::TCALL_a_LUT:
+                    LLVM_DEBUG(errs() << "== expand TCALL_a_LUT to JMPa_LUT\n");
+                    LLVM_DEBUG(MI.dump());
+                    BuildMI(MBB, MI, DL, TII->get(P2::JMPa_LUT))
+                        .add(MI.getOperand(0))
+                        .addImm(1)
+                        .addImm(P2::ALWAYS);
+                    MI.eraseFromParent();
+                    changed = true;
+                    break;
+
+                case P2::TCALL_a_COG:
+                    LLVM_DEBUG(errs() << "== expand TCALL_a_COG to JMPa_COG\n");
+                    LLVM_DEBUG(MI.dump());
+                    BuildMI(MBB, MI, DL, TII->get(P2::JMPa_COG))
+                        .add(MI.getOperand(0))
+                        .addImm(1)
+                        .addImm(P2::ALWAYS);
+                    MI.eraseFromParent();
+                    changed = true;
+                    break;
+
                 case P2::TCALL_r:
                     LLVM_DEBUG(errs() << "== expand TCALL_r to JMPr\n");
                     LLVM_DEBUG(MI.dump());

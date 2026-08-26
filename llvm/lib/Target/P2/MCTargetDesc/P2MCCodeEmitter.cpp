@@ -219,6 +219,28 @@ unsigned P2MCCodeEmitter::encodeAbsCallTarget(const MCInst &MI, unsigned OpNo, S
     return Target;
 }
 
+// Stubs: forward to encodeAbsCallTarget until A7 adds correct fixup types.
+unsigned P2MCCodeEmitter::encodeAbsCallTargetLUT(const MCInst &MI, unsigned OpNo, SmallVectorImpl<MCFixup> &Fixups,
+                                                 const MCSubtargetInfo &STI) const {
+    return encodeAbsCallTarget(MI, OpNo, Fixups, STI);
+}
+
+unsigned P2MCCodeEmitter::encodeAbsCallTargetCOG(const MCInst &MI, unsigned OpNo, SmallVectorImpl<MCFixup> &Fixups,
+                                                 const MCSubtargetInfo &STI) const {
+    return encodeAbsCallTarget(MI, OpNo, Fixups, STI);
+}
+
+// Stubs: forward to getJumpAbsTargetOpValue until A7 adds correct fixup types.
+unsigned P2MCCodeEmitter::getJumpAbsLutTargetOpValue(const MCInst &MI, unsigned OpNo, SmallVectorImpl<MCFixup> &Fixups,
+                                                     const MCSubtargetInfo &STI) const {
+    return getJumpAbsTargetOpValue(MI, OpNo, Fixups, STI);
+}
+
+unsigned P2MCCodeEmitter::getJumpAbsCogTargetOpValue(const MCInst &MI, unsigned OpNo, SmallVectorImpl<MCFixup> &Fixups,
+                                                     const MCSubtargetInfo &STI) const {
+    return getJumpAbsTargetOpValue(MI, OpNo, Fixups, STI);
+}
+
 unsigned P2MCCodeEmitter::getExprOpValue(const MCInst &MI, const MCExpr *Expr, SmallVectorImpl<MCFixup> &Fixups,
                                             const MCSubtargetInfo &STI) const {
 
